@@ -1,7 +1,7 @@
 // Groovy Scripted Pipeline
 
 node {
-    // Define properties, including build parameters
+    // Define build parameters. These will be automatically read by Jenkins.
     properties([
         parameters([
             choice(name: 'TARGET_ENV', choices: ['Dev', 'QA', 'Prod'], description: 'Select the target environment for deployment.'),
@@ -10,49 +10,47 @@ node {
         ])
     ])
 
-    // Use a try-catch-finally block for robust error handling and cleanup
+    // A try-catch-finally block ensures errors are handled and cleanup always runs
     try {
-        stage('Initialization & Checkout') {
-            echo "Starting deployment process for environment: ${params.TARGET_ENV}"
-            echo "Deploy App One: ${params.DEPLOY_APP_ONE}"
-            echo "Deploy App Two: ${params.DEPLOY_APP_TWO}"
-
-            // Checkout the source code from your Git repository
-            // This assumes your Jenkins job is configured to pull from the correct repo
+        // Stage 1: Initialization
+        stage('Initialization') {
+            echo "Pipeline started for environment: ${params.TARGET_ENV}"
+            echo "Deploy App One: ${params.DEPLOY_APP_ONE}, Deploy App Two: ${params.DEPLOY_APP_TWO}"
+            // Checkout the source code from the configured Git repository
             checkout scm
         }
 
-        stage('Pulling Configs from Git') {
+        // Stage 2: Parameter Pulling from Git
+        stage('Parameter Pulling from Git') {
             echo "Fetching configuration for ${params.TARGET_ENV}..."
-            // Assuming your configs are in a folder like /jenkins/configs/<env_name>/
-            // This command copies the correct JSON files to the workspace root
-            // The pipeline will fail if the config directory doesn't exist
+            // Copy the environment-specific config files to the workspace root
             sh "cp jenkins/configs/${params.TARGET_ENV.toLowerCase()}/*.json ."
             echo "Configuration files pulled successfully."
         }
 
-        stage('Manual Approval for Production') {
-            // Only trigger this stage if the target environment is 'Prod'
+        // Stage 3: Parameter Validation
+        stage('Parameter Validation') {
+            // This stage includes manual approval only for the Production environment
             if (params.TARGET_ENV == 'Prod') {
+                echo "Manual approval required for Production."
                 timeout(time: 5, unit: 'MINUTES') {
-                    // Pauses the pipeline and waits for a user to click "Proceed" or "Abort"
-                    input message: "Proceed with PRODUCTION deployment?", ok: "Yes, Deploy to Production"
+                    input message: "Review deployment details. Proceed with PRODUCTION deployment?", ok: "Yes, Deploy to Production"
                 }
             } else {
                 echo "Skipping manual approval for non-production environment."
             }
         }
 
+        // Stage 4: Test Cases (Planned)
         stage('Test Cases (Planned)') {
-            echo "This is a placeholder for future automated test cases."
-            // When ready, you can add your test script execution here.
-            // Example: sh './run_tests.sh'
+            echo "Placeholder stage for automated tests."
+            // Future test script execution will be added here.
         }
 
+        // Stage 5: Deployment Execution
         stage('Deployment Execution') {
-            echo "Executing the deployment script..."
-            // Construct the command for the Python script
-            // You can pass Jenkins parameters to your Python script as command-line arguments
+            echo "Executing deployment.py script..."
+            // Build the command to run the Python script with the correct parameters
             def deployCommand = "python3 deployment.py --environment ${params.TARGET_ENV}"
             if (params.DEPLOY_APP_ONE) {
                 deployCommand += " --app-one"
@@ -61,26 +59,25 @@ node {
                 deployCommand += " --app-two"
             }
             
-            // Execute the script. The `sh` step will fail the build if the script returns a non-zero exit code.
+            // Run the script. The build will fail if the script returns an error.
             sh deployCommand
         }
 
+        // Stage 6: Validation (Planned)
         stage('Validation (Planned)') {
-            echo "This is a placeholder for post-deployment validation."
-            // When ready, you can add health checks or version checks here.
-            // Example: sh './validate_deployment.sh'
+            echo "Placeholder stage for post-deployment validation."
+            // Future validation scripts (health checks, etc.) will be added here.
         }
 
     } catch (e) {
-        // This block catches any errors that occurred in the stages above
-        echo "An error occurred: ${e.getMessage()}"
+        // This block catches any error from the stages above
+        echo "An error occurred during the pipeline execution: ${e.getMessage()}"
         currentBuild.result = 'FAILURE'
-        throw e // Re-throw the exception to ensure the pipeline is marked as failed
+        throw e // Re-throw the exception to mark the pipeline as failed
     } finally {
-        // This block will always execute, whether the build succeeds or fails
+        // This block always runs, ensuring the workspace is cleaned up
         stage('Cleanup') {
             echo "Cleaning up workspace..."
-            // Add any cleanup steps here, like deleting temporary files
             cleanWs()
         }
     }
