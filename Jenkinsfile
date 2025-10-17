@@ -59,10 +59,10 @@ node {
     } catch (e) {
         echo "An error occurred during the pipeline execution: ${e.getMessage()}"
         currentBuild.result = 'FAILURE'
-    } finally {
-        stage('Cleanup') {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
+    // } finally {
+    //     stage('Cleanup') {
+    //         echo "Cleaning up workspace..."
+    //         cleanWs()
+        // }
     }
 }
