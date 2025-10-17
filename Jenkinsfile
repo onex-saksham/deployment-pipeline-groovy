@@ -114,10 +114,7 @@ node {
                 echo "Successfully updated initialization_deployment_config.json."
             }
         }
-
-        // stage('Parameter Validation') {
-        //      echo "SUCCESS: This stage would pause for manual validation in Production."
-        // }
+        
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
             
@@ -134,35 +131,35 @@ node {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
 
-        // stage('Deployment Execution') {
-        //     echo "Preparing Python environment and running deployment script..."
-        //     dir('Script') {
-        //         sh '''
-        //             # STEP 1: Check for Python3 and install if it's missing
-        //             if ! command -v python3 &> /dev/null
-        //             then
-        //                 echo "Python3 not found. This pipeline assumes it is pre-installed on the agent."
-        //             else
-        //                 echo "Python3 is already installed."
-        //             fi
+        stage('Deployment Execution') {
+            echo "Preparing Python environment and running deployment script..."
+            dir('Script') {
+                sh '''
+                    # STEP 1: Check for Python3 and install if it's missing
+                    if ! command -v python3 &> /dev/null
+                    then
+                        echo "Python3 not found. This pipeline assumes it is pre-installed on the agent."
+                    else
+                        echo "Python3 is already installed."
+                    fi
 
-        //             # STEP 2: Create virtual environment and install dependencies
-        //             echo "Creating Python virtual environment..."
-        //             python3 -m venv venv
+                    # STEP 2: Create virtual environment and install dependencies
+                    echo "Creating Python virtual environment..."
+                    python3 -m venv venv
 
-        //             if [ ! -f requirements.txt ]; then
-        //                 echo "requirements.txt not found. Skipping dependency installation."
-        //             else
-        //                 echo "Installing dependencies from requirements.txt..."
-        //                 venv/bin/pip install -r requirements.txt
-        //             fi
+                    if [ ! -f requirements.txt ]; then
+                        echo "requirements.txt not found. Skipping dependency installation."
+                    else
+                        echo "Installing dependencies from requirements.txt..."
+                        venv/bin/pip install -r requirements.txt
+                    fi
                     
-        //             # STEP 3: Run the deployment script
-        //             echo "Running the deployment script..."
-        //             venv/bin/python3 deployment.py
-        //         '''
-        //     }
-        // }
+                    # STEP 3: Run the deployment script
+                    echo "Running the deployment script..."
+                    venv/bin/python3 deployment.py
+                '''
+            }
+        }
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
@@ -173,10 +170,10 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    // finally {
-    //     stage('Cleanup') {
-    //         echo "Cleaning up workspace..."
-    //         cleanWs()
-    //     }
-    // }
+    finally {
+        stage('Cleanup') {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+    }
 }
