@@ -3,7 +3,7 @@ node {
         parameters([
             booleanParam(name: 'SMS', defaultValue: false),
             booleanParam(name: 'RCS', defaultValue: false),
-            booleanParam(name: 'Whatsapp', defaultValue: false)
+            booleanParam(name: 'Whatsapp', defaultValue: false),
 
             choice(name: 'TARGET_ENV', choices: ['Dev', 'QA', 'Prod', 'SBI Prod', 'SMPP DR', 'Functional Lab'], description: 'Select the target environment for deployment.'),
 
