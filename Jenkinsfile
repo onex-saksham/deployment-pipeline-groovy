@@ -17,7 +17,7 @@ node {
             booleanParam(name: 'KAFKA_EXPORTER', defaultValue: false),
             booleanParam(name: 'PROMETHEUS', defaultValue: false),
             booleanParam(name: 'GRAFANA', defaultValue: false),
-            booleanParam(name: 'HEALTH REPORTS', defaultValue: false),
+            booleanParam(name: 'HEALTH_REPORTS', defaultValue: false),
             booleanParam(name: 'RECON', defaultValue: false),
             booleanParam(name: 'JOBS', defaultValue: false),
             booleanParam(name: 'API', defaultValue: false),
@@ -92,7 +92,7 @@ node {
                 // 3. Update all the service flags inside the 'deploy' object
                 def services = [
                     'ZOOKEEPER', 'KAFKA', 'DORIS_FE', 'DORIS_BE', 'NODE_EXPORTER', 
-                    'KAFKA_EXPORTER', 'PROMETHEUS', 'GRAFANA', 'HEALTH REPORTS', 
+                    'KAFKA_EXPORTER', 'PROMETHEUS', 'GRAFANA', 'HEALTH_REPORTS', 
                     'RECON', 'JOBS', 'API', 'NGINX'
                 ]
 
