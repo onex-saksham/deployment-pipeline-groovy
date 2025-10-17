@@ -32,19 +32,13 @@ node {
 
         }
         stage('Gather Script and Releases') {
-            
+            steps {
                 echo "Fetching Script and Releases folders from private repo..."
-
-                // Use a temporary directory to avoid cluttering the workspace
                 dir('temp_private_repo') {
-                    
-                    // Wrap with credentials to load the token for LFS authentication
                     withCredentials([string(credentialsId: 'private-github-token', variable: 'GITHUB_TOKEN')]) {
-                        
                         // Manually configure Git LFS to use the token
                         sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
-                        // Checkout using sparse-checkout to pull only specific folders
                         checkout([
                             $class: 'GitSCM',
                             branches: [[name: '*/main']],
@@ -52,7 +46,6 @@ node {
                                 url: 'https://github.com/1xtel/ODP.git',
                                 credentialsId: 'private-github-token'
                             ]],
-                            // Corrected: Both extensions must be in the same list
                             extensions: [
                                 [$class: 'GitLFSPull'],
                                 [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
@@ -65,13 +58,12 @@ node {
                         // Clean up the git config to remove the token
                         sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                     }
-                
+                }
 
                 echo "Copying folders to the workspace root..."
-                // Copy the downloaded folders from the temp directory to the main workspace
                 sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Script ./"
                 sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
-
+                
                 echo "Successfully loaded Script and Releases directories."
             }
         }
