@@ -48,7 +48,7 @@ node {
                         ]
                     ]],
                     userRemoteConfigs: [[
-                        url: 'https://@github.com:1xtel/ODP.git', // <-- CHANGE THIS URL
+                        url: 'https://github.com/1xtel/ODP.git', // <-- CHANGE THIS URL
                         credentialsId: 'private-github-token' // <-- Use the ID you created in Step 1
                     ]]
                 ])
