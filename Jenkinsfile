@@ -35,8 +35,7 @@ node {
             // 'steps' block is removed from here
             echo "Fetching Script and Releases folders from private repo..."
             dir('temp_private_repo') {
-                withCredentials([string(credentialsId: 'private-github-token', variable: 'GITHUB_TOKEN')]) {
-                    // Manually configure Git LFS to use the token
+                withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN')]) {                    // Manually configure Git LFS to use the token
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
                     checkout([
