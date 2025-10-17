@@ -2,8 +2,21 @@ node {
     properties([
         parameters([
             choice(name: 'TARGET_ENV', choices: ['Dev', 'QA', 'Prod'], description: 'Select the target environment for deployment.'),
-            booleanParam(name: 'DEPLOY_APP_ONE', defaultValue: true, description: 'Deploy Application One?'),
-            booleanParam(name: 'DEPLOY_APP_TWO', defaultValue: false, description: 'Deploy Application Two?')
+            string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
+
+            booleanParam(name: 'DEPLOY_ZOOKEEPER', defaultValue: false, description: 'Deploy Zookeeper?'),
+            booleanParam(name: 'DEPLOY_KAFKA', defaultValue: false, description: 'Deploy Kafka?'),
+            booleanParam(name: 'DEPLOY_DORIS_FE', defaultValue: false, description: 'Deploy Doris FE?'),
+            booleanParam(name: 'DEPLOY_DORIS_BE', defaultValue: false, description: 'Deploy Doris BE?'),
+            booleanParam(name: 'DEPLOY_NODE_EXPORTER', defaultValue: false, description: 'Deploy Node Exporter?'),
+            booleanParam(name: 'DEPLOY_KAFKA_EXPORTER', defaultValue: false, description: 'Deploy Kafka Exporter?'),
+            booleanParam(name: 'DEPLOY_PROMETHEUS', defaultValue: false, description: 'Deploy Prometheus?'),
+            booleanParam(name: 'DEPLOY_GRAFANA', defaultValue: false, description: 'Deploy Grafana?'),
+            booleanParam(name: 'DEPLOY_HEALTH_REPORTS', defaultValue: false, description: 'Deploy Health Reports?'),
+            booleanParam(name: 'DEPLOY_RECON', defaultValue: false, description: 'Deploy Recon?'),
+            booleanParam(name: 'DEPLOY_JOBS', defaultValue: false, description: 'Deploy Jobs?'),
+            booleanParam(name: 'DEPLOY_API', defaultValue: false, description: 'Deploy API?'),
+            booleanParam(name: 'DEPLOY_NGINX', defaultValue: false, description: 'Deploy Nginx?')
         ])
     ])
 
