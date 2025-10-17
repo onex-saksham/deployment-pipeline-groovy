@@ -63,42 +63,53 @@ node {
             echo "Successfully loaded Script and Releases directories."
         }
 
-        stage('Parameter Pulling from Git') {
-            echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
-            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
-            echo "Successfully loaded initialization_deployment_config.json and passwords.json."
-            script {
-                def configFile = 'Script/initialization_deployment_config.json'
-                
-                echo "Reading configuration from ${configFile}..."
-                def config = readJSON file: configFile
+        stage('Prepare and Update Config') {
+            steps {
+                echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
+                sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
+                echo "Successfully loaded configuration files."
 
-                echo "Updating configuration with build parameters..."
-                
-                config.deploy_version = params.DEPLOY_VERSION
-
-                config.channels.sms = params.SMS
-                config.channels.rcs = params.RCS
-                config.channels.whatsapp = params.Whatsapp
-
-                def services = [
-                    'ZOOKEEPER', 'KAFKA', 'DORIS_FE', 'DORIS_BE', 'NODE_EXPORTER', 
-                    'KAFKA_EXPORTER', 'PROMETHEUS', 'GRAFANA', 'HEALTH REPORTS', 
-                    'RECON', 'JOBS', 'API', 'NGINX'
-                ]
-
-                services.each { serviceName ->
-                    def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-                    def paramValue = params[serviceName]
+                script {
+                    def configFile = 'Script/initialization_deployment_config.json'
                     
-                    echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.services[jsonKey] = paramValue
+                    echo "Reading configuration from ${configFile}..."
+                    def config = readJSON file: configFile
+
+                    echo "Updating configuration with build parameters..."
+
+                    // Ensure the parent objects exist before setting properties
+                    if (!config.releases) { config.releases = [:] }
+                    if (!config.deploy) { config.deploy = [:] }
+                    
+                    // 1. Update the deployment version
+                    config.releases.new_version = params.DEPLOY_VERSION
+
+                    // 2. Update the top-level channel flags
+                    config.deploy_sms = params.SMS
+                    config.deploy_rcs = params.RCS
+                    config.deploy_whatsapp = params.Whatsapp
+
+                    // 3. Update all the service flags inside the 'deploy' object
+                    def services = [
+                        'ZOOKEEPER', 'KAFKA', 'DORIS_FE', 'DORIS_BE', 'NODE_EXPORTER', 
+                        'KAFKA_EXPORTER', 'PROMETHEUS', 'GRAFANA', 'HEALTH REPORTS', 
+                        'RECON', 'JOBS', 'API', 'NGINX'
+                    ]
+
+                    services.each { serviceName ->
+                        // Convert parameter name to a JSON-friendly key (e.g., "HEALTH REPORTS" -> "health_reports")
+                        def jsonKey = serviceName.toLowerCase().replace(' ', '_')
+                        def paramValue = params[serviceName]
+                        
+                        echo " - Setting service '${jsonKey}' to '${paramValue}'"
+                        config.deploy[jsonKey] = paramValue
+                    }
+                    
+                    echo "Writing updated configuration back to ${configFile}..."
+                    writeJSON file: configFile, json: config, pretty: 4
+                    
+                    echo "Successfully updated initialization_deployment_config.json."
                 }
-                
-                echo "Writing updated configuration back to ${configFile}..."
-                writeJSON file: configFile, json: config, pretty: 4
-                
-                echo "Successfully updated initialization_deployment_config.json."
             }
         }
 
