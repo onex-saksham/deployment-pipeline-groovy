@@ -31,6 +31,35 @@ node {
             checkout scm
 
         }
+        stage('Gather Script and Releases') {
+            echo "Fetching Script and Releases folders from private repo..."
+
+            // Use a temporary directory to avoid cluttering the workspace
+            dir('temp_private_repo') {
+                // Use sparse-checkout to pull only the specified folders
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [[
+                        $class: 'SparseCheckoutPaths',
+                        sparseCheckoutPaths: [
+                            [path: 'Jenkins/deployment-pipeline/Script/'],
+                            [path: 'Jenkins/deployment-pipeline/Releases/']
+                        ]
+                    ]],
+                    userRemoteConfigs: [[
+                        url: 'https://@github.com:1xtel/ODP.git', // <-- CHANGE THIS URL
+                        credentialsId: 'private-github-token' // <-- Use the ID you created in Step 1
+                    ]]
+                ])
+            }
+            echo "Copying folders to the workspace root..."
+            // Copy the downloaded folders from the temp directory to the main workspace
+            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Script ./"
+            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
+
+            echo "Successfully loaded Script and Releases directories."
+        }
 
         stage('Parameter Pulling from Git') {
             echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
@@ -49,7 +78,37 @@ node {
         }
 
         stage('Deployment Execution') {
-            echo "SUCCESS: This stage would execute the deployment.py script."
+            echo "Preparing Python environment and running deployment script..."
+
+            dir('Script') {
+                sh '''
+                    # STEP 1: Check for Python3 and install if it's missing
+                    # WARNING: This is NOT a best practice and requires sudo permissions.
+                    if ! command -v python3 &> /dev/null
+                    then
+                        echo "Python3 not found. Attempting to install..."
+                        # This command is for Debian/Ubuntu systems.
+                        sudo apt-get update -y && sudo apt-get install -y python3-pip python3-venv
+                    else
+                        echo "Python3 is already installed."
+                    fi
+
+                    # STEP 2: Create virtual environment and install dependencies
+                    echo "Creating Python virtual environment..."
+                    python3 -m venv venv
+
+                    if [ ! -f requirements.txt ]; then
+                        echo "requirements.txt not found. Skipping dependency installation."
+                    else
+                        echo "Installing dependencies from requirements.txt..."
+                        venv/bin/pip install -r requirements.txt
+                    fi
+                    
+                    # STEP 3: Run the deployment script
+                    echo "Running the deployment script..."
+                    venv/bin/python3 deployment.py
+                '''
+            }
         }
 
         stage('Validation (Planned)') {
