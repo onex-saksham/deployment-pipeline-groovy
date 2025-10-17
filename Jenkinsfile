@@ -32,37 +32,48 @@ node {
 
         }
         stage('Gather Script and Releases') {
-            echo "Fetching Script and Releases folders from private repo..."
+            steps {
+                echo "Fetching Script and Releases folders from private repo..."
 
-            // Use a temporary directory to avoid cluttering the workspace
-            dir('temp_private_repo') {
-                withCredentials([string(credentialsId: 'private-github-token', variable: 'GITHUB_TOKEN')]) {
-                // Manually configure Git LFS authentication
-                    sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    extensions: [[$class: 'GitLFSPull']],
-                    extensions: [[
-                        $class: 'SparseCheckoutPaths',
-                        sparseCheckoutPaths: [
-                            [path: 'Jenkins/deployment-pipeline/Script/'],
-                            [path: 'Jenkins/deployment-pipeline/Releases/']
-                        ]
-                    ]],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/1xtel/ODP.git', // <-- CHANGE THIS URL
-                        credentialsId: 'private-github-token' // <-- Use the ID you created in Step 1
-                    ]]
-                ])
-                sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
+                // Use a temporary directory to avoid cluttering the workspace
+                dir('temp_private_repo') {
+                    
+                    // Wrap with credentials to load the token for LFS authentication
+                    withCredentials([string(credentialsId: 'private-github-token', variable: 'GITHUB_TOKEN')]) {
+                        
+                        // Manually configure Git LFS to use the token
+                        sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
+
+                        // Checkout using sparse-checkout to pull only specific folders
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: '*/main']],
+                            userRemoteConfigs: [[
+                                url: 'https://github.com/1xtel/ODP.git',
+                                credentialsId: 'private-github-token'
+                            ]],
+                            // Corrected: Both extensions must be in the same list
+                            extensions: [
+                                [$class: 'GitLFSPull'],
+                                [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
+                                    [path: 'Jenkins/deployment-pipeline/Script/'],
+                                    [path: 'Jenkins/deployment-pipeline/Releases/']
+                                ]]
+                            ]
+                        ])
+
+                        // Clean up the git config to remove the token
+                        sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
+                    }
+                }
+
+                echo "Copying folders to the workspace root..."
+                // Copy the downloaded folders from the temp directory to the main workspace
+                sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Script ./"
+                sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
+
+                echo "Successfully loaded Script and Releases directories."
             }
-            echo "Copying folders to the workspace root..."
-            // Copy the downloaded folders from the temp directory to the main workspace
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Script ./"
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
-
-            echo "Successfully loaded Script and Releases directories."
         }
 
         stage('Parameter Pulling from Git') {
