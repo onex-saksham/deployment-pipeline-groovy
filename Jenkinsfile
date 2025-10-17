@@ -127,6 +127,7 @@ node {
             
             echo "Validation approved. Continuing to the next stage..."
         }
+
         stage('Test Cases (Planned)') {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
@@ -156,7 +157,8 @@ node {
                     
                     # STEP 3: Run the deployment script
                     echo "Running the deployment script..."
-                    venv/bin/python3 deployment.py
+                    source venv/bin/activate
+                    python3 deployment.py
                 '''
             }
         }
