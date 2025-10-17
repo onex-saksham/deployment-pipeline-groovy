@@ -34,9 +34,7 @@ node {
         stage('Gather Script and Releases') {
             echo "Fetching Script and Releases folders from private repo..."
             dir('temp_private_repo') {
-                // This now correctly uses your 'Username with password' credential
                 withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
-                    // Manually configure Git LFS to use the password (your token)
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
                     checkout([
@@ -54,8 +52,6 @@ node {
                             ]]
                         ]
                     ])
-
-                    // Clean up the git config to remove the token
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                 }
             }
@@ -71,45 +67,89 @@ node {
             echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
             sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
             echo "Successfully loaded initialization_deployment_config.json and passwords.json."
+            script {
+                def configFile = 'Script/initialization_deployment_config.json'
+                
+                echo "Reading configuration from ${configFile}..."
+                def config = readJSON file: configFile
+
+                echo "Updating configuration with build parameters..."
+                
+                config.deploy_version = params.DEPLOY_VERSION
+
+                config.channels.sms = params.SMS
+                config.channels.rcs = params.RCS
+                config.channels.whatsapp = params.Whatsapp
+
+                def services = [
+                    'ZOOKEEPER', 'KAFKA', 'DORIS_FE', 'DORIS_BE', 'NODE_EXPORTER', 
+                    'KAFKA_EXPORTER', 'PROMETHEUS', 'GRAFANA', 'HEALTH REPORTS', 
+                    'RECON', 'JOBS', 'API', 'NGINX'
+                ]
+
+                services.each { serviceName ->
+                    def jsonKey = serviceName.toLowerCase().replace(' ', '_')
+                    def paramValue = params[serviceName]
+                    
+                    echo " - Setting service '${jsonKey}' to '${paramValue}'"
+                    config.services[jsonKey] = paramValue
+                }
+                
+                echo "Writing updated configuration back to ${configFile}..."
+                writeJSON file: configFile, json: config, pretty: 4
+                
+                echo "Successfully updated initialization_deployment_config.json."
+            }
         }
 
+        // stage('Parameter Validation') {
+        //      echo "SUCCESS: This stage would pause for manual validation in Production."
+        // }
         stage('Parameter Validation') {
-             echo "SUCCESS: This stage would pause for manual validation in Production."
+            echo "Displaying updated configuration for validation:"
+            
+            sh 'cat Script/initialization_deployment_config.json'
+            
+            input(
+                message: 'Please review the deployment configuration above. Do you want to proceed?',
+                ok: 'Yes, Proceed with Deployment' 
+            )
+            
+            echo "Validation approved. Continuing to the next stage..."
         }
-
         stage('Test Cases (Planned)') {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
 
-        stage('Deployment Execution') {
-            echo "Preparing Python environment and running deployment script..."
-            dir('Script') {
-                sh '''
-                    # STEP 1: Check for Python3 and install if it's missing
-                    if ! command -v python3 &> /dev/null
-                    then
-                        echo "Python3 not found. This pipeline assumes it is pre-installed on the agent."
-                    else
-                        echo "Python3 is already installed."
-                    fi
+        // stage('Deployment Execution') {
+        //     echo "Preparing Python environment and running deployment script..."
+        //     dir('Script') {
+        //         sh '''
+        //             # STEP 1: Check for Python3 and install if it's missing
+        //             if ! command -v python3 &> /dev/null
+        //             then
+        //                 echo "Python3 not found. This pipeline assumes it is pre-installed on the agent."
+        //             else
+        //                 echo "Python3 is already installed."
+        //             fi
 
-                    # STEP 2: Create virtual environment and install dependencies
-                    echo "Creating Python virtual environment..."
-                    python3 -m venv venv
+        //             # STEP 2: Create virtual environment and install dependencies
+        //             echo "Creating Python virtual environment..."
+        //             python3 -m venv venv
 
-                    if [ ! -f requirements.txt ]; then
-                        echo "requirements.txt not found. Skipping dependency installation."
-                    else
-                        echo "Installing dependencies from requirements.txt..."
-                        venv/bin/pip install -r requirements.txt
-                    fi
+        //             if [ ! -f requirements.txt ]; then
+        //                 echo "requirements.txt not found. Skipping dependency installation."
+        //             else
+        //                 echo "Installing dependencies from requirements.txt..."
+        //                 venv/bin/pip install -r requirements.txt
+        //             fi
                     
-                    # STEP 3: Run the deployment script
-                    echo "Running the deployment script..."
-                    venv/bin/python3 deployment.py
-                '''
-            }
-        }
+        //             # STEP 3: Run the deployment script
+        //             echo "Running the deployment script..."
+        //             venv/bin/python3 deployment.py
+        //         '''
+        //     }
+        // }
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
@@ -119,10 +159,11 @@ node {
         echo "An error occurred during the pipeline execution: ${e.getMessage()}"
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
-    } finally {
-        stage('Cleanup') {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
-    }
+    } 
+    // finally {
+    //     stage('Cleanup') {
+    //         echo "Cleaning up workspace..."
+    //         cleanWs()
+    //     }
+    // }
 }
