@@ -4,26 +4,25 @@ node {
             choice(name: 'TARGET_ENV', choices: ['Dev', 'QA', 'Prod'], description: 'Select the target environment for deployment.'),
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
-            booleanParam(name: 'DEPLOY_ZOOKEEPER', defaultValue: false, description: 'Deploy Zookeeper?'),
-            booleanParam(name: 'DEPLOY_KAFKA', defaultValue: false, description: 'Deploy Kafka?'),
-            booleanParam(name: 'DEPLOY_DORIS_FE', defaultValue: false, description: 'Deploy Doris FE?'),
-            booleanParam(name: 'DEPLOY_DORIS_BE', defaultValue: false, description: 'Deploy Doris BE?'),
-            booleanParam(name: 'DEPLOY_NODE_EXPORTER', defaultValue: false, description: 'Deploy Node Exporter?'),
-            booleanParam(name: 'DEPLOY_KAFKA_EXPORTER', defaultValue: false, description: 'Deploy Kafka Exporter?'),
-            booleanParam(name: 'DEPLOY_PROMETHEUS', defaultValue: false, description: 'Deploy Prometheus?'),
-            booleanParam(name: 'DEPLOY_GRAFANA', defaultValue: false, description: 'Deploy Grafana?'),
-            booleanParam(name: 'DEPLOY_HEALTH_REPORTS', defaultValue: false, description: 'Deploy Health Reports?'),
-            booleanParam(name: 'DEPLOY_RECON', defaultValue: false, description: 'Deploy Recon?'),
-            booleanParam(name: 'DEPLOY_JOBS', defaultValue: false, description: 'Deploy Jobs?'),
-            booleanParam(name: 'DEPLOY_API', defaultValue: false, description: 'Deploy API?'),
-            booleanParam(name: 'DEPLOY_NGINX', defaultValue: false, description: 'Deploy Nginx?')
+            booleanParam(name: 'ZOOKEEPER', defaultValue: false),
+            booleanParam(name: 'KAFKA', defaultValue: false),
+            booleanParam(name: 'DORIS_FE', defaultValue: false),
+            booleanParam(name: 'DORIS_BE', defaultValue: false),
+            booleanParam(name: 'NODE_EXPORTER', defaultValue: false),
+            booleanParam(name: 'KAFKA_EXPORTER', defaultValue: false),
+            booleanParam(name: 'PROMETHEUS', defaultValue: false),
+            booleanParam(name: 'GRAFANA', defaultValue: false),
+            booleanParam(name: 'HEALTH REPORTS', defaultValue: false),
+            booleanParam(name: 'RECON', defaultValue: false),
+            booleanParam(name: 'JOBS', defaultValue: false),
+            booleanParam(name: 'API', defaultValue: false),
+            booleanParam(name: 'NGINX', defaultValue: false)
         ])
     ])
 
     try {
         stage('Initialization') {
             echo "Pipeline started for environment: ${params.TARGET_ENV}"
-            echo "Deploy App One: ${params.DEPLOY_APP_ONE}, Deploy App Two: ${params.DEPLOY_APP_TWO}"
             checkout scm
         }
 
