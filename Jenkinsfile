@@ -1,6 +1,10 @@
 node {
     properties([
         parameters([
+            booleanParam(name: 'SMS', defaultValue: false),
+            booleanParam(name: 'RCS', defaultValue: false),
+            booleanParam(name: 'Whatsapp', defaultValue: false)
+
             choice(name: 'TARGET_ENV', choices: ['Dev', 'QA', 'Prod'], description: 'Select the target environment for deployment.'),
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
