@@ -36,7 +36,9 @@ node {
 
             // Use a temporary directory to avoid cluttering the workspace
             dir('temp_private_repo') {
-                // Use sparse-checkout to pull only the specified folders
+                withCredentials([string(credentialsId: 'private-github-token', variable: 'GITHUB_TOKEN')]) {
+                // Manually configure Git LFS authentication
+                    sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
@@ -53,6 +55,7 @@ node {
                         credentialsId: 'private-github-token' // <-- Use the ID you created in Step 1
                     ]]
                 ])
+                sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
             }
             echo "Copying folders to the workspace root..."
             // Copy the downloaded folders from the temp directory to the main workspace
