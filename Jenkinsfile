@@ -29,11 +29,15 @@ node {
         stage('Initialization') {
             echo "Pipeline started for environment: ${params.TARGET_ENV}"
             checkout scm
-            
+
         }
 
         stage('Parameter Pulling from Git') {
-            echo "SUCCESS: This stage would pull configs for ${params.TARGET_ENV}."
+            echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
+        
+            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
+            
+            echo "Successfully loaded initialization_deployment_config.json and passwords.json."
         }
 
         stage('Parameter Validation') {
