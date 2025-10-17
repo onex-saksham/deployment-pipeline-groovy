@@ -32,7 +32,7 @@ node {
 
         }
         stage('Gather Script and Releases') {
-            steps {
+            
                 echo "Fetching Script and Releases folders from private repo..."
 
                 // Use a temporary directory to avoid cluttering the workspace
@@ -65,7 +65,7 @@ node {
                         // Clean up the git config to remove the token
                         sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                     }
-                }
+                
 
                 echo "Copying folders to the workspace root..."
                 // Copy the downloaded folders from the temp directory to the main workspace
