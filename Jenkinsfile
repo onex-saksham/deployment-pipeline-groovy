@@ -40,6 +40,7 @@ node {
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
+                    extensions: [GitLFSPull()], // <-- ADD THIS LINE
                     extensions: [[
                         $class: 'SparseCheckoutPaths',
                         sparseCheckoutPaths: [
