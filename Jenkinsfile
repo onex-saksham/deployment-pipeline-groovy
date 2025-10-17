@@ -29,6 +29,7 @@ node {
         stage('Initialization') {
             echo "Pipeline started for environment: ${params.TARGET_ENV}"
             checkout scm
+            
         }
 
         stage('Parameter Pulling from Git') {
