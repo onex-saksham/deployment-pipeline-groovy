@@ -136,16 +136,34 @@ node {
             echo "Preparing Python environment and running deployment script..."
             dir('Script') {
                 sh '''
-                    # ... (Python check and venv setup are the same) ...
+                    # STEP 1: Check for Python3 and the VENV module, and install if missing
+                    # WARNING: This requires the Jenkins user to have sudo privileges!
+                    if ! command -v python3 &> /dev/null; then
+                        echo "Python3 not found. Attempting to install..."
+                        sudo apt-get update -y && sudo apt-get install -y python3-pip python3-venv
+                    else
+                        echo "Python3 is installed."
+                        # Check if the venv module is installed, if not, install it
+                        if ! python3 -m venv --help &> /dev/null; then
+                            echo "Python3-venv package is missing. Attempting to install..."
+                            sudo apt-get update -y && sudo apt-get install -y python3-venv
+                        fi
+                    fi
 
-                    echo "Installing dependencies from requirements.txt..."
-                    venv/bin/pip install -r requirements.txt
+                    # STEP 2: Create virtual environment
+                    echo "Creating Python virtual environment..."
+                    python3 -m venv venv
+
+                    # STEP 3: Install dependencies
+                    if [ ! -f requirements.txt ]; then
+                        echo "requirements.txt not found. Skipping dependency installation."
+                    else
+                        echo "Installing dependencies from requirements.txt..."
+                        venv/bin/pip install -r requirements.txt
+                    fi
                     
-                    # --- CORRECTED SCRIPT EXECUTION ---
-                    echo "Running the deployment script using the venv python..."
-                    
-                    # This is the correct way to run the script.
-                    # It directly uses the python from the virtual environment.
+                    # STEP 4: Run the deployment script
+                    echo "Running the deployment script..."
                     venv/bin/python3 deployment.py
                 '''
             }
