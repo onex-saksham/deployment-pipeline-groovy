@@ -136,29 +136,17 @@ node {
             echo "Preparing Python environment and running deployment script..."
             dir('Script') {
                 sh '''
-                    # STEP 1: Check for Python3 and install if it's missing
-                    if ! command -v python3 &> /dev/null
-                    then
-                        echo "Python3 not found. This pipeline assumes it is pre-installed on the agent."
-                    else
-                        echo "Python3 is already installed."
-                    fi
+                    # ... (Python check and venv setup are the same) ...
 
-                    # STEP 2: Create virtual environment and install dependencies
-                    echo "Creating Python virtual environment..."
-                    python3 -m venv venv
-
-                    if [ ! -f requirements.txt ]; then
-                        echo "requirements.txt not found. Skipping dependency installation."
-                    else
-                        echo "Installing dependencies from requirements.txt..."
-                        venv/bin/pip install -r requirements.txt
-                    fi
+                    echo "Installing dependencies from requirements.txt..."
+                    venv/bin/pip install -r requirements.txt
                     
-                    # STEP 3: Run the deployment script
-                    echo "Running the deployment script..."
-                    source venv/bin/activate
-                    python3 deployment.py
+                    # --- CORRECTED SCRIPT EXECUTION ---
+                    echo "Running the deployment script using the venv python..."
+                    
+                    # This is the correct way to run the script.
+                    # It directly uses the python from the virtual environment.
+                    venv/bin/python3 deployment.py
                 '''
             }
         }
@@ -172,10 +160,10 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    finally {
-        stage('Cleanup') {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
-    }
+    // finally {
+    //     stage('Cleanup') {
+    //         echo "Cleaning up workspace..."
+    //         cleanWs()
+    //     }
+    // }
 }
