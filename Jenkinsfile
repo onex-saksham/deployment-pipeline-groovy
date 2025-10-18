@@ -140,7 +140,7 @@ node {
                     # WARNING: This requires the Jenkins user to have sudo privileges!
                     if ! command -v python3 &> /dev/null; then
                         echo "Python3 not found. Attempting to install..."
-                        sudo apt-get update -y && sudo apt-get install -y python3-pip python3-venv
+                        // sudo apt-get update -y && sudo apt-get install -y python3-pip python3-venv
                     else
                         echo "Python3 is installed."
                         # Check if the venv module is installed, if not, install it
