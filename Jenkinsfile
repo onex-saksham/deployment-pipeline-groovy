@@ -105,8 +105,7 @@ node {
                     def paramValue = params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.deploy[jsonKey] = paramValue
-                }
+                    config.deploy[jsonKey] = paramValue.toString() // <-- THIS IS THE FIX                }
                 
                 echo "Writing updated configuration back to ${configFile}..."
                 writeJSON file: configFile, json: config, pretty: 4
