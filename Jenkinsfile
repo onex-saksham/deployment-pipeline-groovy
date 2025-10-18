@@ -67,7 +67,6 @@ node {
         }
 
         stage('Prepare and Update Config') {
-            // 'steps' block has been removed from here
             echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
             sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
             echo "Successfully loaded configuration files."
@@ -80,19 +79,15 @@ node {
 
                 echo "Updating configuration with build parameters..."
 
-                // Ensure the parent objects exist before setting properties
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
                 
-                // 1. Update the deployment version
                 config.releases.new_version = params.DEPLOY_VERSION
+                
+                config.deploy_sms = params.SMS.toString()
+                config.deploy_rcs = params.RCS.toString()
+                config.deploy_whatsapp = params.Whatsapp.toString()
 
-                // 2. Update the top-level channel flags
-                config.deploy_sms = params.SMS
-                config.deploy_rcs = params.RCS
-                config.deploy_whatsapp = params.Whatsapp
-
-                // 3. Update all the service flags inside the 'deploy' object
                 def services = [
                     'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
                     'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
@@ -100,12 +95,13 @@ node {
                 ]
 
                 services.each { serviceName ->
-                    // Convert parameter name to a JSON-friendly key
                     def jsonKey = serviceName.toLowerCase().replace(' ', '_')
                     def paramValue = params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.deploy[jsonKey] = paramValue.toString() 
+                    // Convert the boolean value to a string before assigning it
+                    config.deploy[jsonKey] = paramValue.toString() // <-- THIS IS THE FIX
+                }
                 
                 echo "Writing updated configuration back to ${configFile}..."
                 writeJSON file: configFile, json: config, pretty: 4
