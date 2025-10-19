@@ -66,53 +66,53 @@ node {
             echo "Successfully loaded Script and Releases directories."
         }
 
-        stage('Prepare and Update Config') {
-            echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
-            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
-            echo "Successfully loaded configuration files."
+       stage('Prepare and Update Config') {
+    echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
+    sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
+    echo "Successfully loaded configuration files."
 
-            script {
-                def configFile = 'Script/initialization_deployment_config.json'
-                
-                echo "Reading configuration from ${configFile}..."
-                def config = readJSON file: configFile
+    script {
+        def configFile = 'Script/initialization_deployment_config.json'
+        
+        echo "Reading configuration from ${configFile}..."
+        def config = readJSON file: configFile
 
-                echo "Updating configuration with build parameters..."
+        echo "Updating configuration with build parameters..."
 
-                // Add these two lines to tell Python which user's home directory to use
-                echo "Overriding user to 'jenkins' for this pipeline run..."
-                config.user = "jenkins"
-                config.base_user = "jenkins"
+        // Add these two lines to tell Python which user's home directory to use
+        echo "Overriding user to 'jenkins' for this pipeline run..."
+        config.user = "jenkins"
+        config.base_user = "jenkins"
 
-                if (!config.releases) { config.releases = [:] }
-                if (!config.deploy) { config.deploy = [:] }
-                
-                config.releases.new_version = params.DEPLOY_VERSION
-                
-                config.deploy_sms = params.SMS.toString()
-                config.deploy_rcs = params.RCS.toString()
-                config.deploy_whatsapp = params.Whatsapp.toString()
+        if (!config.releases) { config.releases = [:] }
+        if (!config.deploy) { config.deploy = [:] }
+        
+        config.releases.new_version = params.DEPLOY_VERSION
+        
+        config.deploy_sms = params.SMS.toString()
+        config.deploy_rcs = params.RCS.toString()
+        config.deploy_whatsapp = params.Whatsapp.toString()
 
-                def services = [
-                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
-                    'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
-                    'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
-                ]
+        def services = [
+            'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
+            'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
+            'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
+        ]
 
-                services.each { serviceName ->
-                    def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-                    def paramValue = params[serviceName]
-                    
-                    echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.deploy[jsonKey] = paramValue.toString()
-                }
-                
-                echo "Writing updated configuration back to ${configFile}..."
-                writeJSON file: configFile, json: config, pretty: 4
-                
-                echo "Successfully updated initialization_deployment_config.json."
-            }
+        services.each { serviceName ->
+            def jsonKey = serviceName.toLowerCase().replace(' ', '_')
+            def paramValue = params[serviceName]
+            
+            echo " - Setting service '${jsonKey}' to '${paramValue}'"
+            config.deploy[jsonKey] = paramValue.toString()
         }
+        
+        echo "Writing updated configuration back to ${configFile}..."
+        writeJSON file: configFile, json: config, pretty: 4
+        
+        echo "Successfully updated initialization_deployment_config.json."
+    }
+}
         
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
@@ -132,41 +132,41 @@ node {
         }
 
         stage('Deployment Execution') {
-        echo "Preparing SSH key and Python environment..."
-        
-        // Use withCredentials to load the key into a temporary file
-        withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-            // A try...finally block guarantees that the cleanup step will always run
-            try {
-                dir('Script') {
-                    sh '''
-                        echo "Setting up temporary SSH key..."
-                        # Create the .ssh directory in the jenkins user's home folder
-                        mkdir -p /home/jenkins/.ssh
-                        
-                        # Copy the key from the secure temp file to the path your Python script expects
-                        cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
-                        
-                        # Set the correct, strict file permissions required for SSH keys
-                        chmod 600 /home/jenkins/.ssh/id_rsa
-                        
-                        echo "Creating Python virtual environment..."
-                        python3 -m venv venv
+    echo "Preparing SSH key and Python environment..."
+    
+    // Use withCredentials to load the key from Jenkins into a temporary file
+    withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+        // A try...finally block guarantees that the cleanup step will always run
+        try {
+            dir('Script') {
+                sh '''
+                    echo "Setting up temporary SSH key..."
+                    # Create the .ssh directory in the jenkins user's home folder
+                    mkdir -p /home/jenkins/.ssh
+                    
+                    # Copy the key from the secure temp file to the path your Python script expects
+                    cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+                    
+                    # Set the correct, strict file permissions required for SSH keys
+                    chmod 600 /home/jenkins/.ssh/id_rsa
+                    
+                    echo "Creating Python virtual environment..."
+                    python3 -m venv venv
 
-                        echo "Installing dependencies..."
-                        venv/bin/pip install -r requirements.txt
-                        
-                        echo "Running the deployment script..."
-                        venv/bin/python3 deployment.py
-                    '''
-                }
-            } finally {
-                // This cleanup block is guaranteed to run, even if the deployment fails
-                echo "Cleaning up temporary SSH key..."
-                sh 'rm -rf /home/jenkins/.ssh'
+                    echo "Installing dependencies..."
+                    venv/bin/pip install -r requirements.txt
+                    
+                    echo "Running the deployment script..."
+                    venv/bin/python3 deployment.py
+                '''
             }
+        } finally {
+            // This cleanup block is guaranteed to run, even if the deployment fails
+            echo "Cleaning up temporary SSH key..."
+            sh 'rm -rf /home/jenkins/.ssh'
         }
     }
+}
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
