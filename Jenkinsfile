@@ -30,9 +30,22 @@ node {
 
     try {
         stage('Initialization') {
-            echo "Pipeline started for environment: ${params.TARGET_ENV}"
-            checkout scm
-        }
+                echo "Pipeline started for environment: ${params.TARGET_ENV}"
+                
+                // Clean workspace first
+                cleanWs()
+                
+                // Explicit checkout with full configuration
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/onex-saksham/deployment-pipeline-groovy.git',
+                        credentialsId: 'your-github-credentials'  // Make sure this exists in Jenkins
+                    ]]
+                ])
+            }
 
         stage('Gather Script and Releases') {
             echo "Fetching Script and Releases folders from private repo..."
