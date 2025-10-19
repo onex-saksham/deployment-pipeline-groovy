@@ -38,94 +38,20 @@ def jenkins_cred():
     file_path = os.path.join(base_path, "jenkins_cred.json")
     with open(file_path, "r") as f:
         return json.load(f)
-def debug_environment():
-    """Debug the environment to see differences"""
-    import os, subprocess, getpass
-
-    logger.info("=== ENVIRONMENT DEBUG INFO ===")
-    logger.info(f"Current user: {getpass.getuser()}")
-    logger.info(f"Home directory: {os.path.expanduser('~')}")
-    logger.info(f"Working directory: {os.getcwd()}")
-    logger.info(f"Python path: {os.sys.executable}")
-
-    # Check if files exist
-    files_to_check = [
-        'initialization_deployment_config.json',
-        'jenkins_cred.json', 
-        'passwords.json'
-    ]
-
-    for file in files_to_check:
-        exists = os.path.exists(file)
-        logger.info(f"File {file} exists: {exists}")
-        if exists:
-            try:
-                with open(file, 'r') as f:
-                    content = f.read()
-                    logger.info(f"File {file} size: {len(content)} bytes")
-                    # Log first few lines to verify content
-                    lines = content.split('\n')[:3]
-                    logger.info(f"File {file} preview: {lines}")
-            except Exception as e:
-                logger.error(f"Error reading {file}: {e}")
-
-    # Test SSH connection directly
-    try:
-        logger.info("Testing direct SSH connection...")
-        result = subprocess.run([
-            'ssh', '-o', 'StrictHostKeyChecking=no',
-            'saksham@10.20.3.78', 'echo "SSH test successful"'
-        ], capture_output=True, text=True, timeout=10)
-        logger.info(f"SSH test result: {result.returncode}, output: {result.stdout}, error: {result.stderr}")
-    except Exception as e:
-        logger.error(f"SSH test failed: {e}")   
-    import subprocess
-    import getpass
-
+    
 def ssh_connection(ssh, hostname, username, ssh_path, port):
     try:
-        # First try SSH key authentication with paramiko
         ssh.connect(hostname=hostname, username=username, key_filename=ssh_path, port=port)
         logger.info("Connected using password-less connectivity")
-        return True
-    except Exception as e:
-        logger.info(f"SSH key authentication failed: {e}")
+
+    except Exception:
         try:
-            # Fallback to sshpass for password authentication
-            password = jenkins_cred().get(hostname) or jenkins_cred().get(f"{username}@{hostname}")
-            if not password:
-                logger.error(f"No password found for {hostname} in jenkins_cred.json")
-                return False
-            
-            # Test connection using sshpass
-            test_cmd = [
-                'sshpass', '-p', password,
-                'ssh', '-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=10',
-                '-p', str(port),
-                f'{username}@{hostname}',
-                'echo "connection_test"'
-            ]
-            
-            result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
-            
-            if result.returncode == 0:
-                logger.info("SSH connection verified with sshpass, using paramiko with password")
-                # Now connect with paramiko using the verified password
-                ssh.connect(hostname=hostname, username=username, password=password, port=port)
-                logger.info("Connected using jenkins credentials via paramiko")
-                return True
-            else:
-                logger.error(f"sshpass test failed: {result.stderr}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            logger.error("SSH connection timed out")
-            return False
-        except Exception as e:
-            logger.error(f"Password authentication failed: {e}")
-            return False
-        
+            ssh.connect(hostname=hostname, username=username, password=jenkins_cred()[hostname], port=port)
+            logger.info("Connected using jenkins credentials")
+
+        except Exception:
+            logger.info("Not able to connect")
+
 def run(ssh, cmd):
     """Run commands in shell"""
 
@@ -1037,7 +963,6 @@ def threaded_deployment(config, binary_path, tasks):
             except Exception:
                 logger.error(f"{svc} raised an unhandled exception")
 def main():
-    debug_environment()
     base_path = os.path.dirname(os.path.abspath(__file__))
     config = get_config(base_path)
     binary_path = os.path.join(base_path, "..", "Releases")
