@@ -79,6 +79,11 @@ node {
 
                 echo "Updating configuration with build parameters..."
 
+                // Add these two lines to tell Python which user's home directory to use
+                echo "Overriding user to 'jenkins' for this pipeline run..."
+                config.user = "jenkins"
+                config.base_user = "jenkins"
+
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
                 
@@ -99,8 +104,7 @@ node {
                     def paramValue = params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    // Convert the boolean value to a string before assigning it
-                    config.deploy[jsonKey] = paramValue.toString() // <-- THIS IS THE FIX
+                    config.deploy[jsonKey] = paramValue.toString()
                 }
                 
                 echo "Writing updated configuration back to ${configFile}..."
@@ -128,39 +132,39 @@ node {
         }
 
         stage('Deployment Execution') {
-            echo "Preparing Python environment and running deployment script..."
-            dir('Script') {
-                sh '''
-                    # STEP 1: Check for Python3 and the VENV module, and install if missing
-                    # WARNING: This requires the Jenkins user to have sudo privileges!
-                    if ! command -v python3 &> /dev/null; then
-                        echo "Python3 not found. Attempting to install..."
-                        // sudo apt-get update -y && sudo apt-get install -y python3-pip python3-venv
-                    else
-                        echo "Python3 is installed."
-                        # Check if the venv module is installed, if not, install it
-                        if ! python3 -m venv --help &> /dev/null; then
-                            echo "Python3-venv package is missing. Attempting to install..."
-                            sudo apt-get update -y && sudo apt-get install -y python3-venv
-                        fi
-                    fi
+            echo "Preparing SSH key and Python environment..."
+            
+            // Use withCredentials to load the key into a temporary file
+            withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+                // A try...finally block guarantees that the cleanup step will always run
+                try {
+                    dir('Script') {
+                        sh '''
+                            echo "Setting up temporary SSH key..."
+                            # Create the .ssh directory in the jenkins user's home folder
+                            mkdir -p /home/jenkins/.ssh
+                            
+                            # Copy the key from the secure temp file to the path your Python script expects
+                            cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+                            
+                            # Set the correct, strict file permissions required for SSH keys
+                            chmod 600 /home/jenkins/.ssh/id_rsa
+                            
+                            echo "Creating Python virtual environment..."
+                            python3 -m venv venv
 
-                    # STEP 2: Create virtual environment
-                    echo "Creating Python virtual environment..."
-                    python3 -m venv venv
-
-                    # STEP 3: Install dependencies
-                    if [ ! -f requirements.txt ]; then
-                        echo "requirements.txt not found. Skipping dependency installation."
-                    else
-                        echo "Installing dependencies from requirements.txt..."
-                        venv/bin/pip install -r requirements.txt
-                    fi
-                    
-                    # STEP 4: Run the deployment script
-                    echo "Running the deployment script..."
-                    venv/bin/python3 deployment.py
-                '''
+                            echo "Installing dependencies..."
+                            venv/bin/pip install -r requirements.txt
+                            
+                            echo "Running the deployment script..."
+                            venv/bin/python3 deployment.py
+                        '''
+                    }
+                } finally {
+                    // This cleanup block is guaranteed to run, even if the deployment fails
+                    echo "Cleaning up temporary SSH key..."
+                    sh 'rm -rf /home/jenkins/.ssh'
+                }
             }
         }
 
