@@ -156,7 +156,6 @@ stage('Deployment Execution') {
         }
     }
 }
-}
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
