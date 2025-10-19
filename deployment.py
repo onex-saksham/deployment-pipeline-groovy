@@ -69,18 +69,18 @@ def debug_environment():
             except Exception as e:
                 logger.error(f"Error reading {file}: {e}")
 
-# Test SSH connection directly
-try:
-    logger.info("Testing direct SSH connection...")
-    result = subprocess.run([
-        'ssh', '-o', 'StrictHostKeyChecking=no',
-        'saksham@10.20.3.78', 'echo "SSH test successful"'
-    ], capture_output=True, text=True, timeout=10)
-    logger.info(f"SSH test result: {result.returncode}, output: {result.stdout}, error: {result.stderr}")
-except Exception as e:
-    logger.error(f"SSH test failed: {e}")   
-import subprocess
-import getpass
+    # Test SSH connection directly
+    try:
+        logger.info("Testing direct SSH connection...")
+        result = subprocess.run([
+            'ssh', '-o', 'StrictHostKeyChecking=no',
+            'saksham@10.20.3.78', 'echo "SSH test successful"'
+        ], capture_output=True, text=True, timeout=10)
+        logger.info(f"SSH test result: {result.returncode}, output: {result.stdout}, error: {result.stderr}")
+    except Exception as e:
+        logger.error(f"SSH test failed: {e}")   
+    import subprocess
+    import getpass
 
 def ssh_connection(ssh, hostname, username, ssh_path, port):
     try:
