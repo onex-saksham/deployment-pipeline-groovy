@@ -38,7 +38,47 @@ def jenkins_cred():
     file_path = os.path.join(base_path, "jenkins_cred.json")
     with open(file_path, "r") as f:
         return json.load(f)
-    
+def debug_environment():
+    """Debug the environment to see differences"""
+    import os, subprocess, getpass
+
+    logger.info("=== ENVIRONMENT DEBUG INFO ===")
+    logger.info(f"Current user: {getpass.getuser()}")
+    logger.info(f"Home directory: {os.path.expanduser('~')}")
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Python path: {os.sys.executable}")
+
+    # Check if files exist
+    files_to_check = [
+        'initialization_deployment_config.json',
+        'jenkins_cred.json', 
+        'passwords.json'
+    ]
+
+    for file in files_to_check:
+        exists = os.path.exists(file)
+        logger.info(f"File {file} exists: {exists}")
+        if exists:
+            try:
+                with open(file, 'r') as f:
+                    content = f.read()
+                    logger.info(f"File {file} size: {len(content)} bytes")
+                    # Log first few lines to verify content
+                    lines = content.split('\n')[:3]
+                    logger.info(f"File {file} preview: {lines}")
+            except Exception as e:
+                logger.error(f"Error reading {file}: {e}")
+
+# Test SSH connection directly
+try:
+    logger.info("Testing direct SSH connection...")
+    result = subprocess.run([
+        'ssh', '-o', 'StrictHostKeyChecking=no',
+        'saksham@10.20.3.78', 'echo "SSH test successful"'
+    ], capture_output=True, text=True, timeout=10)
+    logger.info(f"SSH test result: {result.returncode}, output: {result.stdout}, error: {result.stderr}")
+except Exception as e:
+    logger.error(f"SSH test failed: {e}")   
 import subprocess
 import getpass
 
@@ -997,6 +1037,7 @@ def threaded_deployment(config, binary_path, tasks):
             except Exception:
                 logger.error(f"{svc} raised an unhandled exception")
 def main():
+    debug_environment()
     base_path = os.path.dirname(os.path.abspath(__file__))
     config = get_config(base_path)
     binary_path = os.path.join(base_path, "..", "Releases")
