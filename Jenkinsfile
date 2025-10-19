@@ -135,41 +135,49 @@ node {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
 
-        stage('Deployment Execution') {
-    echo "Preparing SSH key and Python environment..."
+//         stage('Deployment Execution') {
+//     echo "Preparing SSH key and Python environment..."
     
-    // Use withCredentials to load the key from Jenkins into a temporary file
-    withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-        // A try...finally block guarantees that the cleanup step will always run
-        try {
-            dir('Script') {
-                sh '''
-                    echo "Setting up temporary SSH key..."
-                    # Create the .ssh directory in the jenkins user's home folder
-                    mkdir -p /home/jenkins/.ssh
+//     // Use withCredentials to load the key from Jenkins into a temporary file
+//     withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+//         // A try...finally block guarantees that the cleanup step will always run
+//         try {
+//             dir('Script') {
+//                 sh '''
+//                     echo "Setting up temporary SSH key..."
+//                     # Create the .ssh directory in the jenkins user's home folder
+//                     mkdir -p /home/jenkins/.ssh
                     
-                    # Copy the key from the secure temp file to the path your Python script expects
-                    cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+//                     # Copy the key from the secure temp file to the path your Python script expects
+//                     cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
                     
-                    # Set the correct, strict file permissions required for SSH keys
-                    chmod 600 /home/jenkins/.ssh/id_rsa
+//                     # Set the correct, strict file permissions required for SSH keys
+//                     chmod 600 /home/jenkins/.ssh/id_rsa
                     
-                    echo "Creating Python virtual environment..."
-                    python3 -m venv venv
+//                     echo "Creating Python virtual environment..."
+//                     python3 -m venv venv
 
-                    echo "Installing dependencies..."
-                    venv/bin/pip install -r requirements.txt
+//                     echo "Installing dependencies..."
+//                     venv/bin/pip install -r requirements.txt
                     
-                    echo "Running the deployment script..."
-                    venv/bin/python3 deployment.py
-                '''
-            }
-        } finally {
-            // This cleanup block is guaranteed to run, even if the deployment fails
-            echo "Cleaning up temporary SSH key..."
-            sh 'rm -rf /home/jenkins/.ssh'
-        }
-    }
+//                     echo "Running the deployment script..."
+//                     venv/bin/python3 deployment.py
+//                 '''
+//             }
+//         } finally {
+//             // This cleanup block is guaranteed to run, even if the deployment fails
+//             echo "Cleaning up temporary SSH key..."
+//             sh 'rm -rf /home/jenkins/.ssh'
+//         }
+//     }
+// }
+stage('Debug SSH Password Connection') {
+    echo "Attempting a direct password-based SSH connection to 10.20.3.78..."
+    sh '''
+        # Use sshpass to provide the password 'saksham' to the ssh command.
+        # The -o option prevents the script from hanging on the host key prompt.
+        sshpass -p 'saksham' ssh -o StrictHostKeyChecking=no saksham@10.20.3.78 'echo "SUCCESS: Connection to 10.20.3.78 worked!"'
+    '''
 }
 
         stage('Validation (Planned)') {
