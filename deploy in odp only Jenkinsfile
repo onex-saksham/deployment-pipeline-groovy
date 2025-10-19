@@ -65,11 +65,7 @@ node {
             
             echo "Successfully loaded Script and Releases directories."
         }
-        stage('Patch Deployment Script') {
-            echo "Overwriting deployment.py with the CI-friendly version..."
-            sh 'cp deployment.py Script/'
-            echo "Script patched successfully."
-        }
+
        stage('Prepare and Update Config') {
     echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
     sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
