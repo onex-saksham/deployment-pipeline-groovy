@@ -135,22 +135,40 @@ node {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
 stage('Deployment Execution') {
-    echo "Preparing Python environment and running deployment script..."
+    echo "Preparing SSH key and Python environment..."
     
-    // This sshagent wrapper securely loads the SSH key and makes it available to any process inside
-    sshagent(credentials: ['server-ssh-key']) {
-        dir('Script') {
-            sh '''
-                echo "Creating Python virtual environment..."
-                python3 -m venv venv
+    // Use withCredentials to load the key from Jenkins into a temporary file
+    withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+        try {
+            dir('Script') {
+                sh '''
+                    echo "Setting up environment..."
+                    # Install sshpass if not available
+                    if ! command -v sshpass &> /dev/null; then
+                        echo "Installing sshpass..."
+                        sudo apt-get update && sudo apt-get install -y sshpass
+                    fi
+                    
+                    # Create the .ssh directory and key
+                    mkdir -p /home/jenkins/.ssh
+                    cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+                    chmod 600 /home/jenkins/.ssh/id_rsa
+                    
+                    echo "Creating Python virtual environment..."
+                    python3 -m venv venv
 
-                echo "Installing dependencies..."
-                venv/bin/pip install -r requirements.txt
-                
-                echo "Running the deployment script with console logging..."
-                export LOG_TO_CONSOLE=true
-                venv/bin/python3 deployment.py
-            '''
+                    echo "Installing dependencies..."
+                    venv/bin/pip install -r requirements.txt
+                    
+                    echo "Running the deployment script..."
+                    # Set environment variable to enable console logging
+                    export LOG_TO_CONSOLE=true
+                    venv/bin/python3 deployment.py
+                '''
+            }
+        } finally {
+            echo "Cleaning up temporary SSH key..."
+            sh 'rm -rf /home/jenkins/.ssh'
         }
     }
 }

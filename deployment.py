@@ -33,24 +33,59 @@ def get_config(base_path):
     
 def jenkins_cred():
     """Load jenkins credentials from a JSON file"""
-    base_path = os.getcwd() # Use the current working directory
+
+    base_path = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_path, "jenkins_cred.json")
     with open(file_path, "r") as f:
         return json.load(f)
     
+import subprocess
+import getpass
+
 def ssh_connection(ssh, hostname, username, ssh_path, port):
     try:
+        # First try SSH key authentication with paramiko
         ssh.connect(hostname=hostname, username=username, key_filename=ssh_path, port=port)
         logger.info("Connected using password-less connectivity")
-
-    except Exception:
+        return True
+    except Exception as e:
+        logger.info(f"SSH key authentication failed: {e}")
         try:
-            ssh.connect(hostname=hostname, username=username, password=jenkins_cred()[hostname], port=port)
-            logger.info("Connected using jenkins credentials")
-
-        except Exception:
-            logger.info("Not able to connect")
-
+            # Fallback to sshpass for password authentication
+            password = jenkins_cred().get(hostname) or jenkins_cred().get(f"{username}@{hostname}")
+            if not password:
+                logger.error(f"No password found for {hostname} in jenkins_cred.json")
+                return False
+            
+            # Test connection using sshpass
+            test_cmd = [
+                'sshpass', '-p', password,
+                'ssh', '-o', 'StrictHostKeyChecking=no',
+                '-o', 'ConnectTimeout=10',
+                '-p', str(port),
+                f'{username}@{hostname}',
+                'echo "connection_test"'
+            ]
+            
+            result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0:
+                logger.info("SSH connection verified with sshpass, using paramiko with password")
+                # Now connect with paramiko using the verified password
+                ssh.connect(hostname=hostname, username=username, password=password, port=port)
+                logger.info("Connected using jenkins credentials via paramiko")
+                return True
+            else:
+                logger.error(f"sshpass test failed: {result.stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error("SSH connection timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Password authentication failed: {e}")
+            return False
+        
 def run(ssh, cmd):
     """Run commands in shell"""
 
