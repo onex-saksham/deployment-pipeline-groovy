@@ -85,7 +85,7 @@ node {
 
         // Add these two lines to tell Python which user's home directory to use
         echo "Overriding user to 'jenkins' for this pipeline run..."
-        config.user = "jenkins"
+        config.user = "salsham"
         config.base_user = "jenkins"
 
         if (!config.releases) { config.releases = [:] }
