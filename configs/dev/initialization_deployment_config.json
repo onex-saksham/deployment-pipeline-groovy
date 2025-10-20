@@ -24,7 +24,7 @@
             "__tenant_id__"
         ]
     },
-    "base_user": "jenkins",
+    "base_user": "admin1a",
     "user": "saksham",
     "deployment_type": "multi",
     "deployment_path": "/home/saksham/ODP/tools",
