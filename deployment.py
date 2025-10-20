@@ -20,7 +20,6 @@ def password():
 
     base_path = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_path, "passwords.json")
-    print(file_path)
     with open(file_path, "r") as f:
         return json.load(f)
 
@@ -39,94 +38,19 @@ def jenkins_cred():
     with open(file_path, "r") as f:
         return json.load(f)
     
-def debug_environment():
-    """Debug the environment to see differences"""
-    import os, subprocess, getpass
-
-    logger.info("=== ENVIRONMENT DEBUG INFO ===")
-    logger.info(f"Current user: {getpass.getuser()}")
-    logger.info(f"Home directory: {os.path.expanduser('~')}")
-    logger.info(f"Working directory: {os.getcwd()}")
-    logger.info(f"Python path: {os.sys.executable}")
-
-    # Check if files exist
-    files_to_check = [
-        'initialization_deployment_config.json',
-        'jenkins_cred.json', 
-        'passwords.json'
-    ]
-
-    for file in files_to_check:
-        exists = os.path.exists(file)
-        logger.info(f"File {file} exists: {exists}")
-        if exists:
-            try:
-                with open(file, 'r') as f:
-                    content = f.read()
-                    logger.info(f"File {file} size: {len(content)} bytes")
-                    # Log first few lines to verify content
-                    lines = content.split('\n')[:3]
-                    logger.info(f"File {file} preview: {lines}")
-            except Exception as e:
-                logger.error(f"Error reading {file}: {e}")
-
-    # Test SSH connection directly
-    try:
-        logger.info("Testing direct SSH connection...")
-        result = subprocess.run([
-            'ssh', '-o', 'StrictHostKeyChecking=no',
-            'saksham@10.20.3.78', 'echo "SSH test successful"'
-        ], capture_output=True, text=True, timeout=10)
-        logger.info(f"SSH test result: {result.returncode}, output: {result.stdout}, error: {result.stderr}")
-    except Exception as e:
-        logger.error(f"SSH test failed: {e}")   
-import subprocess
-import getpass
-
 def ssh_connection(ssh, hostname, username, ssh_path, port):
     try:
-        # First try SSH key authentication with paramiko
-        ssh.connect(hostname=hostname, username=username, port=port)
-        logger.info("Connected successfully using SSH Agent!")
-        return True
-    except Exception as e:
-        logger.info(f"SSH key authentication failed: {e}")
+        ssh.connect(hostname=hostname, username=username, key_filename=ssh_path, port=port)
+        logger.info("Connected using password-less connectivity")
+
+    except Exception:
         try:
-            # Fallback to sshpass for password authentication
-            password = jenkins_cred().get(hostname) or jenkins_cred().get(f"{username}@{hostname}")
-            if not password:
-                logger.error(f"No password found for {hostname} in jenkins_cred.json")
-                return False
-            
-            # Test connection using sshpass
-            test_cmd = [
-                'sshpass', '-p', password,
-                'ssh', '-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=10',
-                '-p', str(port),
-                f'{username}@{hostname}',
-                'echo "connection_test"'
-            ]
-            
-            result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
-            
-            if result.returncode == 0:
-                logger.info("SSH connection verified with sshpass, using paramiko with password")
-                # Now connect with paramiko using the verified password
-                ssh.connect(hostname=hostname, username=username, password=password, port=port)
-                logger.info("Connected using jenkins credentials via paramiko")
-                return True
-            else:
-                logger.error(f"sshpass test failed: {result.stderr}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            logger.error("SSH connection timed out")
-            return False
-        except Exception as e:
-            logger.error(f"Password authentication failed: {e}")
-            return False
-        
+            ssh.connect(hostname=hostname, username=username, password=jenkins_cred()[hostname], port=port)
+            logger.info("Connected using jenkins credentials")
+
+        except Exception:
+            logger.info("Not able to connect")
+
 def run(ssh, cmd):
     """Run commands in shell"""
 
@@ -258,44 +182,41 @@ def deploy_kafka(config, binary_path, ssh):
         logger.error(f"Error in deploying Kafka: {e}")
 
 def deploy_doris_fe(config, binary_path, ssh):
-    """Deploy Doris FE"""
-    print("Doris fe deploying")
+    """Deploy Doris FE with proper cluster initialization and consistent service files"""
+
     doris_fe = config["doris_fe"]
     if doris_fe["deployment_path"] != "":
         deployment_path = doris_fe["deployment_path"]
     else:
         deployment_path = config["deployment_path"]
 
-    ssh_path = os.path.join("/home", f"{config["base_user"]}", ".ssh", "id_rsa")
-    service_path = os.path.join("/home", f"{config["user"]}", ".config", "systemd", "user")
+    ssh_path = os.path.join("/home", f"{config['base_user']}", ".ssh", "id_rsa")
+    service_path = os.path.join("/home", f"{config['user']}", ".config", "systemd", "user")
 
     try:
         for i in range(0, len(doris_fe["node_ip"]), 1):
-            logger.info(f"Deploying Doris FE on: {doris_fe["node_ip"][i]}")
+            logger.info(f"Deploying Doris FE on: {doris_fe['node_ip'][i]}")
             ssh_connection(ssh, doris_fe["node_ip"][i], config["user"], ssh_path, config["ssh_port"])
 
+            # ===== COMMON SETUP FOR ALL NODES =====
             run(ssh, f"mkdir -p {deployment_path}")
-            logger.info(f"making {deployment_path}")
-            
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Setups/doris/doris.tar.xz", f"{deployment_path}")
-            run(ssh, f"cd {deployment_path} && "
-                "tar xf doris.tar.xz")
+            run(ssh, f"cd {deployment_path} && tar xf doris.tar.xz")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Configurations/doris_fe/fe.conf", f"{deployment_path}/doris/fe/conf")
 
-            logger.info(f"scp config files for fe done")
-            
-            
             run(ssh, f"cd {deployment_path}/doris/fe/conf && "
-                f"sed -i -e 's|__doris_fe_log__|{doris_fe["properties"]["log"]}|g' "
-                f"-e 's|__doris_http_port__|{doris_fe["ports"]["http"]}|g' "
-                f"-e 's|__doris_edit_log_port__|{doris_fe["ports"]["edit_log"]}|g' "
-                f"-e 's|__doris_rpc_port__|{doris_fe["ports"]["rpc"]}|g' "
-                f"-e 's|__doris_query_port__|{doris_fe["ports"]["query"]}|g' "
+                f"sed -i -e 's|__doris_fe_log__|{doris_fe['properties']['log']}|g' "
+                f"-e 's|__doris_http_port__|{doris_fe['ports']['http']}|g' "
+                f"-e 's|__doris_edit_log_port__|{doris_fe['ports']['edit_log']}|g' "
+                f"-e 's|__doris_rpc_port__|{doris_fe['ports']['rpc']}|g' "
+                f"-e 's|__doris_query_port__|{doris_fe['ports']['query']}|g' "
                 "fe.conf")
 
             if not i:
+                # ===== STEP 1: START MASTER NODE =====
+                logger.info("Step 1: Starting MASTER FE node")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/doris_fe/doris_fe.service", f"{service_path}")
                 run(ssh, f"cd {service_path} && "
@@ -304,61 +225,161 @@ def deploy_doris_fe(config, binary_path, ssh):
                 run(ssh, "systemctl --user daemon-reload && "
                     "systemctl --user enable doris_fe.service && "
                     "systemctl --user start doris_fe.service")
-                
-                logger.info(f"scp fe service and reload with the serice")
+
+                logger.info("Waiting for master FE to be fully ready...")
+                time.sleep(60)
+                logger.info(f"✓ Master FE successfully started on: {doris_fe['node_ip'][i]}")
+
             else:
+                # ===== FOLLOWER NODE FLOW =====
+                master_host = doris_fe["node_ip"][0]
+                master_port = doris_fe["ports"]["query"]
+                follower_host = doris_fe["node_ip"][i]
+                follower_edit_log_port = doris_fe["ports"]["edit_log"]
+                follower_entry = f"{follower_host}:{follower_edit_log_port}"
+
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Processing FOLLOWER node {i}: {follower_host}")
+                logger.info(f"{'='*60}")
+
+                # ===== STEP 2: REGISTER FOLLOWER IN MASTER =====
+                logger.info(f"Step 2: Registering follower {follower_entry} in master cluster")
+                try:
+                    conn = pymysql.connect(
+                        host=master_host,
+                        user="root",
+                        password="",
+                        database="",
+                        port=master_port,
+                        connect_timeout=30
+                    )
+                    try:
+                        with conn.cursor() as cursor:
+                            # Check if follower already exists
+                            cursor.execute("SHOW PROC '/frontends'")
+                            existing = cursor.fetchall()
+                            already_exists = any(follower_host in str(row) for row in existing)
+
+                            if not already_exists:
+                                cursor.execute(f"ALTER SYSTEM ADD FOLLOWER '{follower_entry}'")
+                                conn.commit()
+                                logger.info(f"✓ Successfully registered follower in master")
+                            else:
+                                logger.info(f"ℹ Follower already registered in master")
+                    finally:
+                        conn.close()
+                except Exception as e:
+                    logger.error(f"✗ Failed to register follower: {e}")
+                    raise
+
+                time.sleep(10)  # Allow registration to propagate
+
+                # ===== STEP 3: START FOLLOWER WITH --helper FLAG =====
+                logger.info(f"Step 3: Starting follower WITH --helper flag for initial metadata sync")
+
+                # Create temporary service file with --helper flag
                 with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Services/doris_fe/doris_fe_follower.service", f"{service_path}")
+                    scp.put(f"{binary_path}/Services/doris_fe/doris_fe_follower.service",
+                           f"{service_path}/doris_fe_follower.service")
+
                 run(ssh, f"cd {service_path} && "
                     f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                    f"-e 's|__doris_fe_master_ip__|{doris_fe["node_ip"][0]}|g' "
-                    f"-e 's|__doris_fe_edit_log_port__|{doris_fe["ports"]["edit_log"]}|g' "
+                    f"-e 's|__doris_fe_master_ip__|{master_host}|g' "
+                    f"-e 's|__doris_fe_edit_log_port__|{follower_edit_log_port}|g' "
                     "doris_fe_follower.service")
+
+                # Ensure ExecStart has --helper flag for initial start
+                run(ssh, f"cd {service_path} && "
+                    f"sed -i -e 's|^ExecStart=.*$|ExecStart={deployment_path}/doris/fe/bin/start_fe.sh "
+                    f"--helper {master_host}:{doris_fe['ports']['edit_log']} --daemon|' "
+                    "doris_fe_follower.service")
+
                 run(ssh, "systemctl --user daemon-reload && "
                     "systemctl --user enable doris_fe_follower.service && "
                     "systemctl --user start doris_fe_follower.service")
-                logger.info(f"scp fe service and reload with the serice")
-            logger.info(f"Doris FE successfully started on: {doris_fe["node_ip"][i]}")
-    except Exception as e:
-        logger.error(f"Error in deploying Doris FE: {e}")
 
+                logger.info("Waiting for follower to sync metadata from master...")
+                time.sleep(90)  # Give more time for metadata sync
+                logger.info(f"✓ Follower has synced and joined the cluster")
+
+                # ===== STEP 4: VERIFY CLUSTER STATUS =====
+                logger.info("Step 4: Verifying follower status in cluster")
+                try:
+                    conn = pymysql.connect(
+                        host=master_host,
+                        user="root",
+                        password="",
+                        database="",
+                        port=master_port,
+                        connect_timeout=30
+                    )
+                    try:
+                        with conn.cursor() as cursor:
+                            cursor.execute("SHOW PROC '/frontends'")
+                            frontends = cursor.fetchall()
+                            logger.info(f"Current FE cluster status:")
+                            for fe in frontends:
+                                logger.info(f"  {fe}")
+                    finally:
+                        conn.close()
+                except Exception as e:
+                    logger.warning(f"Could not verify cluster status: {e}")
+
+                # ===== STEP 5: CONVERT TO STANDARD SERVICE FILE =====
+                logger.info(f"Step 5: Converting to standard service file")
+
+                # Stop the service
+                run(ssh, "systemctl --user stop doris_fe_follower.service")
+                time.sleep(5)
+
+                # Modify service file to remove --helper and make it consistent with master
+                run(ssh, f"cd {service_path} && "
+                    f"sed -i -e 's|^Description=.*$|Description=Doris FE Server|' "
+                    f"-e 's|^ExecStart=.*$|ExecStart={deployment_path}/doris/fe/bin/start_fe.sh --daemon|' "
+                    "doris_fe_follower.service")
+
+                # Reload and restart with new configuration
+                run(ssh, "systemctl --user daemon-reload && "
+                    "systemctl --user restart doris_fe_follower.service")
+
+                logger.info("Waiting for follower to restart with standard configuration...")
+                time.sleep(30)
+
+                logger.info(f"✓ Follower service standardized and running normally")
+                logger.info(f"✓ Follower FE deployment complete on: {doris_fe['node_ip'][i]}")
+                logger.info(f"{'='*60}\n")
+
+    except Exception as e:
+        logger.error(f"✗ Error in deploying Doris FE: {e}")
+        raise
 def deploy_doris_be(config, binary_path, ssh):
     """Deploy Doris BE"""
 
-    print("Doris be deploying")
     doris_be = config["doris_be"]
     if doris_be["deployment_path"] != "":
         deployment_path = doris_be["deployment_path"]
-        print(deployment_path)
     else:
         deployment_path = config["deployment_path"]
     deployment_type = config["deployment_type"]
-    print(deployment_type)
 
     ssh_path = os.path.join("/home", f"{config["base_user"]}", ".ssh", "id_rsa")
-    print(ssh_path)
     service_path = os.path.join("/home", f"{config["user"]}", ".config", "systemd", "user")
     doris_fe = config["doris_fe"]
-    logger.info(f"trying compeleted config")
 
     try:
         for i in range(0, len(doris_be["node_ip"]), 1):
             logger.info(f"Deploying Doris BE on: {doris_be["node_ip"][i]}")
             ssh_connection(ssh, doris_be["node_ip"][i], config["user"], ssh_path, config["ssh_port"])
 
-            logger.info(f"Doris be deploying")
-            
             run(ssh, f"mkdir -p {deployment_path} && "
                 f"mkdir -p {doris_be["properties"]["storage"]}")
             if deployment_type == "single" and doris_be["node_ip"][0] == doris_fe["node_ip"][0]:
                 pass
-                logger.info(f"SCP tar")
             else:
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Setups/doris/doris.tar.xz", f"{deployment_path}")
                 run(ssh, f"cd {deployment_path} && "
                     "tar xf doris.tar.xz")
-                logger.info("SCP tar for multinode")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Configurations/doris_be/be.conf", f"{deployment_path}/doris/be/conf")
 
@@ -386,16 +407,12 @@ def deploy_doris_be(config, binary_path, ssh):
 
 def connect_doris_fe_and_be(config, binary_path, ssh):
     """Connect Doris FE and BE"""
-
     logger.info("Connecting Doris FE and BE")
     time.sleep(300)
-
-    print("Doris connect is deploying")
     doris_fe_node_ip = config["doris_fe"]["node_ip"]
     doris_fe_node_port = config["doris_fe"]["ports"]
     doris_be_node_ip = config["doris_be"]["node_ip"]
     doris_be_node_port = config["doris_be"]["ports"]
-
     conn = pymysql.connect(
         host=doris_fe_node_ip[0],
         user="root",
@@ -403,16 +420,11 @@ def connect_doris_fe_and_be(config, binary_path, ssh):
         database="mysql",
         port=doris_fe_node_port["query"]
     )
-
     try:
         with conn.cursor() as cursor:
-            for i in range(1, len(doris_fe_node_ip), 1):
-                cursor.execute(f"alter system add follower '{doris_fe_node_ip[i]}:{doris_fe_node_port["edit_log"]}'")
             for i in range(0, len(doris_be_node_ip), 1):
                 cursor.execute(f"alter system add backend '{doris_be_node_ip[i]}:{doris_be_node_port["heartbeat_service"]}'")
-
             cursor.execute(f"alter user 'root'@'%' identified by '{password()["root"]}'")
-
         logger.info("Doris FE and BE connected")
     except Exception as e:
         logger.error(f"Error in connecting Doris FE and BE: {e}")
@@ -651,6 +663,8 @@ def deploy_grafana(config, binary_path, ssh):
             f"sed -i -e 's|__grafana_ip__|{monitoring["node_ip"]}|g' "
             f"-e 's|__grafana_port__|{monitoring["ports"]["grafana"]}|g' "
             f"-e 's|__grafana_storage__|{monitoring["properties"]["storage"]}|g' "
+            f"-e 's|__sender_password__|{monitoring["smtp"]["password"]}|g' "
+            f"-e 's|__sender_email__|{monitoring["smtp"]["from_address"]}|g' "
             "defaults.ini")
         run(ssh, f"cd {deployment_path}/grafana/conf/provisioning/datasources && "
             f"sed -i -e 's|__prometheus_ip__|{monitoring["node_ip"]}|g' "
@@ -762,27 +776,27 @@ def deploy_jobs(config, binary_path, ssh):
     doris_fe_node_port = config["doris_fe"]["ports"]
 
     try:
-        logger.info(f"Deploying Jobs on: {backend_job["node_ip"]}")
-        ssh_connection(ssh, backend_job["node_ip"], config["user"], ssh_path, config["ssh_port"])
+        for node_ip in backend_job["node_ip"]:
+            logger.info(f"Deploying Jobs on: {node_ip}")
+            ssh_connection(ssh, node_ip, config["user"], ssh_path, config["ssh_port"])
+            
+            run(ssh, f"mkdir -p {deployment_path}")
+            with SCPClient(ssh.get_transport()) as scp:
+                scp.put(f"{binary_path}/Jobs/backend_services", f"{deployment_path}", recursive=True)
+            run(ssh, f"cd {deployment_path}/backend_services && python3 -m venv venv")
+            run(ssh, f"cd {deployment_path}/backend_services && "
+                f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
+                f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
+                f"-e 's|__user__|doris_write_user|g' "
+                f"-e 's|__password__|{password()['doris_write_user']}|g' "
+                f"-e 's|__deployment_path__|{deployment_path}|g' "
+                "config.py")
 
-        run(ssh, f"mkdir -p {deployment_path}")
-        with SCPClient(ssh.get_transport()) as scp:
-            scp.put(f"{binary_path}/Jobs/backend_services", f"{deployment_path}", recursive=True)
-        run(ssh, f"cd {deployment_path}/backend_services && "
-            f"python3 -m venv venv")
-        
-        run(ssh, f"cd {deployment_path}/backend_services && "
-            f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
-            f"-e 's|__doris_fe_query_port__|{doris_fe_node_port["query"]}|g' "
-            f"-e 's|__user__|doris_write_user|g' "
-            f"-e 's|__password__|{password()["doris_write_user"]}|g' "
-            f"-e 's|__deployment_path__|{deployment_path}|g' "
-            "config.py")
-        
-        run(ssh, f"cd {deployment_path}/backend_services && "
-            "bash -c '. venv/bin/activate && pip install -r requirements.txt'")
+            run(ssh, f"cd {deployment_path}/backend_services && "
+                "bash -c '. venv/bin/activate && pip install -r requirements.txt'")
+            
+            logger.info(f"Jobs successfully deployed on: {node_ip}")
 
-        logger.info(f"Jobs successfully started on: {backend_job["node_ip"]}")
     except Exception as e:
         logger.error(f"Error in deploying Jobs: {e}")
 
@@ -809,7 +823,6 @@ def deploy_api(config, binary_path, ssh):
     version = config["api"]["deployment_version"]
     remote_jobs = config["api"]["remote_jobs"]
 
-
     # Determine which types to deploy based on config flags
     deploy_types = []
     if config.get("deploy_sms", False):
@@ -821,7 +834,6 @@ def deploy_api(config, binary_path, ssh):
 
     use_nginx = config["api"]["use_nginx"]
 
-
     if use_nginx == "true":
         # Nginx load balancer
         doris_ip = backend_job_node_ip
@@ -830,34 +842,45 @@ def deploy_api(config, binary_path, ssh):
         # Direct Doris FE master
         doris_ip = doris_fe_node_ip[0]
         doris_port = doris_fe_node_port["query"]
-        
 
     try:
         for deploy_type in deploy_types:
             if deploy_type == "SMS":
                 service_file_name = "aurasummary.service"
                 env_file_name = "aurasummary.env"
+                jar_file_name = f"aurasummary-{version}.jar"
                 api_port = api["ports"]["sms"]
             else:  # WHATSAPP_RCS
                 service_file_name = "aurasummarywarcs.service"
                 env_file_name = "aurasummarywarcs.env"
+                jar_file_name = f"aurasummarywarcs-{version}.jar"
                 api_port = api["ports"]["warcs"]
 
             env_file_versioned = f"{env_file_name.replace('.env', '')}-{version}.env"
             service_file_versioned = f"{service_file_name.replace('.service', '')}-{version}.service"
-
             log4j_file_name = "log4j2.xml" if deploy_type == "SMS" else "log4j2warcs.xml"
 
             for i in range(0, len(api["node_ip"]), 1):
                 logger.info(f"Deploying API on: {api["node_ip"][i]}")
                 ssh_connection(ssh, api["node_ip"][i], config["user"], ssh_path, config["ssh_port"])
 
+                # Create logs folder
                 run(ssh, f"mkdir -p {deployment_path}/api/logs")
+
+                # Copy env file
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Setups/api/{env_file_name}", f"{deployment_path}/api/")
-                # Rename env file
                 run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
 
+                # Copy log4j file
+                with SCPClient(ssh.get_transport()) as scp:
+                    scp.put(f"{binary_path}/Setups/api/{log4j_file_name}", f"{deployment_path}/api/")
+
+                # Copy JAR file
+                with SCPClient(ssh.get_transport()) as scp:
+                    scp.put(f"{binary_path}/Setups/api/{jar_file_name}", f"{deployment_path}/api/")
+
+                # Replace placeholders in env file
                 if deploy_type == "SMS":
                     run(ssh, f"cd {deployment_path}/api && "
                              f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
@@ -889,20 +912,19 @@ def deploy_api(config, binary_path, ssh):
                              f"-e 's|__remote_jobs__|{remote_jobs}|g' "
                              f"{env_file_versioned}")
 
+                # Update log4j placeholders
                 run(ssh, f"cd {deployment_path}/api && "
-                              f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                              f"{log4j_file_name}")
-
+                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
+                         f"{log4j_file_name}")
 
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
                 run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
 
-
                 run(ssh, f"cd {service_path} && "
-                              f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                              f"-e 's|__deployment_version__|{version}|g' "
-                              f"{service_file_versioned}")
+                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
+                         f"-e 's|__deployment_version__|{version}|g' "
+                         f"{service_file_versioned}")
 
                 run(ssh, "systemctl --user daemon-reload && "
                          f"systemctl --user enable {service_file_versioned} && "
@@ -911,6 +933,100 @@ def deploy_api(config, binary_path, ssh):
                 logger.info(f"{deploy_type} API successfully started on: {api['node_ip'][i]}")
     except Exception as e:
         logger.error(f"Error in deploying API: {e}")
+
+
+def generate_nginx_template(config, backend_job):
+    """
+    Generate nginx.conf template with placeholders.
+    Only includes blocks for tools present in backend_job['nginx'].
+    """
+    nginx_conf = [
+        "worker_processes  1;",
+        "events {",
+        "    worker_connections  1024;",
+        "}",
+        ""
+    ]
+
+    # STREAM block (Doris FE)
+    if "doris_fe" in backend_job["nginx"]:
+        nginx_conf.append("stream {")
+        nginx_conf.append("    upstream doris_fe_servers {")
+        nginx_conf.append("        __nginx_doris_fe_connection_string__;")
+        nginx_conf.append("    }")
+        nginx_conf.append("    server {")
+        nginx_conf.append("        listen __nginx_doris_fe_port__;")
+        nginx_conf.append("        proxy_pass doris_fe_servers;")
+        nginx_conf.append("        proxy_connect_timeout 10s;")
+        nginx_conf.append("        proxy_timeout 300s;")
+        nginx_conf.append("    }")
+        nginx_conf.append("}")
+        nginx_conf.append("")
+
+    # Determine selected HTTP-based APIs - FIX: Convert string to boolean properly
+    deploy_sms = config.get("deploy_sms", "false")
+    deploy_whatsapp = config.get("deploy_whatsapp", "false")
+    deploy_rcs = config.get("deploy_rcs", "false")
+
+    http_tools = []
+    if "api_sms" in backend_job["nginx"] and deploy_sms:
+        http_tools.append("api_sms")
+    if "api_warcs" in backend_job["nginx"] and (deploy_whatsapp or deploy_rcs):
+        http_tools.append("api_warcs")
+
+    if http_tools:  # Only include HTTP block if at least one API is selected
+        nginx_conf.append("http {")
+        nginx_conf.append("    include mime.types;")
+        nginx_conf.append("    default_type application/octet-stream;")
+        nginx_conf.append("    sendfile on;")
+        nginx_conf.append("    keepalive_timeout 65;")
+
+        # Add upstreams and server blocks dynamically
+        if "api_sms" in http_tools:
+            nginx_conf.append("    upstream api_sms_servers {")
+            nginx_conf.append("        __nginx_api_sms_connection_string__;")
+            nginx_conf.append("    }")
+            nginx_conf.append("    server {")
+            nginx_conf.append("        listen __nginx_api_sms_port__;")
+            nginx_conf.append("        location / {")
+            nginx_conf.append("            proxy_pass http://api_sms_servers/;")
+            nginx_conf.append("            proxy_set_header Host $host;")
+            nginx_conf.append("            proxy_set_header X-Real-IP $remote_addr;")
+            nginx_conf.append("            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;")
+            nginx_conf.append("            proxy_http_version 1.1;")
+            nginx_conf.append("            proxy_set_header Connection \"\";")
+            nginx_conf.append("            proxy_connect_timeout 5s;")
+            nginx_conf.append("            proxy_read_timeout 180s;")
+            nginx_conf.append("            proxy_send_timeout 60s;")
+            nginx_conf.append("            proxy_buffering off;")
+            nginx_conf.append("        }")
+            nginx_conf.append("    }")
+
+        if "api_warcs" in http_tools:
+            nginx_conf.append("    upstream api_warcs_servers {")
+            nginx_conf.append("        __nginx_api_warcs_connection_string__;")
+            nginx_conf.append("    }")
+            nginx_conf.append("    server {")
+            nginx_conf.append("        listen __nginx_api_warcs_port__;")
+            nginx_conf.append("        location / {")
+            nginx_conf.append("            allow __nginx_registry_erlang_ip__; # Erlang Server IP")
+            nginx_conf.append("            deny all;")
+            nginx_conf.append("            proxy_pass http://api_warcs_servers/;")
+            nginx_conf.append("            proxy_set_header Host $host;")
+            nginx_conf.append("            proxy_set_header X-Real-IP $remote_addr;")
+            nginx_conf.append("            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;")
+            nginx_conf.append("            proxy_http_version 1.1;")
+            nginx_conf.append("            proxy_set_header Connection \"\";")
+            nginx_conf.append("            proxy_connect_timeout 5s;")
+            nginx_conf.append("            proxy_read_timeout 180s;")
+            nginx_conf.append("            proxy_send_timeout 60s;")
+            nginx_conf.append("            proxy_buffering off;")
+            nginx_conf.append("        }")
+            nginx_conf.append("    }")
+
+        nginx_conf.append("}")  # end of http block
+
+    return "\n".join(nginx_conf)
 
 
 def deploy_nginx(config, binary_path, ssh):
@@ -925,73 +1041,107 @@ def deploy_nginx(config, binary_path, ssh):
     if deployment_type == "single":
         return
 
-    ssh_path = os.path.join("/home", f"{config["base_user"]}", ".ssh", "id_rsa")
-    service_path = os.path.join("/home", f"{config["user"]}", ".config", "systemd", "user")
+    ssh_path = os.path.join("/home", f"{config['base_user']}", ".ssh", "id_rsa")
+    service_path = os.path.join("/home", f"{config['user']}", ".config", "systemd", "user")
 
-    # Deployment flags
-    deploy_sms = config.get("deploy_sms", False)
-    deploy_whatsapp = config.get("deploy_whatsapp", False)
-    deploy_rcs = config.get("deploy_rcs", False)
+    # Deployment flags - FIX: Convert string to boolean properly
+    deploy_sms = config.get("deploy_sms", "false")
+    deploy_whatsapp = config.get("deploy_whatsapp", "false")
+    deploy_rcs = config.get("deploy_rcs", "false")
+
     try:
-        logger.info(f"Deploying Nginx on: {backend_job["node_ip"]}")
+        logger.info(f"Deploying Nginx on: {backend_job['node_ip']}")
         ssh_connection(ssh, backend_job["node_ip"], config["user"], ssh_path, config["ssh_port"])
 
         run(ssh, f"mkdir -p {deployment_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Setups/nginx/nginx.tar.xz", f"{deployment_path}")
         run(ssh, f"cd {deployment_path} && "
-            "tar xf nginx.tar.xz && "
-            "mv nginx nginx_setup")
-        
-        run(ssh, f"cd {deployment_path}/nginx_setup && "
-            f"./configure --prefix={deployment_path}/nginx --with-http_ssl_module --with-stream --with-stream_ssl_module --with-http_v2_module --with-http_stub_status_module --without-http_rewrite_module --without-http_gzip_module")
-        run(ssh, f"cd {deployment_path}/nginx_setup && "
-            "make && make install")
-        run(ssh, f"cd {deployment_path}/nginx/conf && "
-            "rm nginx.conf")
-        with SCPClient(ssh.get_transport()) as scp:
-            scp.put(f"{binary_path}/Configurations/nginx/nginx.conf", f"{deployment_path}/nginx/conf")
+                 "tar xf nginx.tar.xz && "
+                 "mv nginx nginx_setup")
 
-        # Filter nginx tools
+        run(ssh, f"cd {deployment_path}/nginx_setup && "
+                 f"./configure --prefix={deployment_path}/nginx --with-http_ssl_module "
+                 "--with-stream --with-stream_ssl_module --with-http_v2_module "
+                 "--with-http_stub_status_module --without-http_rewrite_module --without-http_gzip_module")
+        run(ssh, f"cd {deployment_path}/nginx_setup && make && make install")
+
+        # Generate nginx configuration dynamically
+        nginx_conf_content = generate_nginx_template(config, backend_job)
+
+        # Upload nginx.conf
+        temp_conf_path = "/tmp/nginx.conf"
+        with open(temp_conf_path, "w") as f:
+            f.write(nginx_conf_content)
+        run(ssh, f"cd {deployment_path}/nginx/conf && "
+                 "rm nginx.conf")
+
+        with SCPClient(ssh.get_transport()) as scp:
+            scp.put(temp_conf_path, f"{deployment_path}/nginx/conf/nginx.conf")
+        os.remove(temp_conf_path)
+
+        # Determine tools to configure
         nginx_tools = backend_job["nginx"]
         tools_to_configure = []
+
+        # FIX: Use the same boolean conversion as above
         for tool in nginx_tools:
-            if tool == "api_sms" and not deploy_sms:
-                continue
-            if tool == "api_warcs" and not (deploy_whatsapp or deploy_rcs):
-                continue
-            tools_to_configure.append(tool)
+            if tool == "api_sms" and deploy_sms:
+                tools_to_configure.append(tool)
+            elif tool == "api_warcs" and (deploy_whatsapp or deploy_rcs):
+                tools_to_configure.append(tool)
+            elif tool == "doris_fe":
+                tools_to_configure.append(tool)
 
         # Configure upstream + port replacements
         for tool in tools_to_configure:
             if tool == "doris_fe":
-                tool_ip = config[tool]["node_ip"]
-                tool_port = config[tool]["ports"]["query"]
+                ips = config["doris_fe"]["node_ip"]
+                port = config["doris_fe"]["ports"]["query"]
                 nginx_port = backend_job["ports"]["doris_fe"]
+                placeholder_conn = "__nginx_doris_fe_connection_string__"
+                placeholder_port = "__nginx_doris_fe_port__"
 
             elif tool == "api_sms":
-                tool_ip = config["api"]["node_ip"]
-                tool_port = config["api"]["ports"]["sms"]
+                ips = config["api"]["node_ip"]
+                port = config["api"]["ports"]["sms"]
                 nginx_port = backend_job["ports"]["api_sms"]
+                placeholder_conn = "__nginx_api_sms_connection_string__"
+                placeholder_port = "__nginx_api_sms_port__"
 
             elif tool == "api_warcs":
-                tool_ip = config["api"]["node_ip"]
-                tool_port = config["api"]["ports"]["warcs"]
+                ips = config["api"]["node_ip"]
+                port = config["api"]["ports"]["warcs"]
                 nginx_port = backend_job["ports"]["api_warcs"]
+                placeholder_conn = "__nginx_api_warcs_connection_string__"
+                placeholder_port = "__nginx_api_warcs_port__"
+                # Add Erlang IP placeholder for api_warcs
+                erlang_ip_placeholder = "__nginx_registry_erlang_ip__"
+                # FIX: Use proper dictionary access with get() method and provide default
+                erlang_ip = config["api"]["erlang_registry_ip"] # Default to localhost
 
             else:
                 logger.warning(f"Unknown tool in nginx configuration: {tool}")
                 continue
 
-            # Generate server list without double semicolons
-            servers = [f"server {ip}:{tool_port}" for ip in tool_ip]
-            nginx_connection_string = "\n        ".join(servers)  # Proper indentation
+            # Flatten IPs for multiple nodes
+            flat_ips = [ip for sublist in ips for ip in (sublist if isinstance(sublist, list) else [sublist])]
 
-            # Update the nginx.conf
-            run(ssh, f"cd {deployment_path}/nginx/conf && "
-                     f"sed -i -e 's|__nginx_{tool}_connection_string__|{nginx_connection_string}|g' "
-                     f"-e 's|__nginx_{tool}_port__|{nginx_port}|g' nginx.conf")
+            # Create a single-line server string for sed
+            servers = "".join(f"server {ip}:{port};" if i < len(flat_ips) - 1 else f"server {ip}:{port}" for i, ip in
+                              enumerate(flat_ips))
 
+            # For api_warcs, we need to replace the Erlang IP as well
+            if tool == "api_warcs":
+                run(ssh, f'sed -i -e "s|{placeholder_conn}|{servers}|g" '
+                         f'-e "s|{placeholder_port}|{nginx_port}|g" '
+                         f'-e "s|{erlang_ip_placeholder}|{erlang_ip}|g" '
+                         f'{deployment_path}/nginx/conf/nginx.conf')
+            else:
+                # Correct run(ssh, ...) with proper quotes for other tools
+                run(ssh, f'sed -i -e "s|{placeholder_conn}|{servers}|g" '
+                         f'-e "s|{placeholder_port}|{nginx_port}|g" '
+                         f'{deployment_path}/nginx/conf/nginx.conf')
         # Deploy systemd unit
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/nginx/nginx.service", service_path)
@@ -1001,14 +1151,16 @@ def deploy_nginx(config, binary_path, ssh):
 
         # Start nginx service
         run(ssh, "systemctl --user daemon-reload && "
-            "systemctl --user enable nginx.service && "
-            "systemctl --user start nginx.service")
+                 "systemctl --user enable nginx.service && "
+                 "systemctl --user restart nginx.service")
 
-        logger.info(f"Nginx successfully started on: {backend_job["node_ip"]}")
+        logger.info(f"Nginx successfully deployed on: {backend_job['node_ip']}")
+
     except Exception as e:
         logger.error(f"Error in deploying Nginx: {e}")
 
 
+'''
 def deploy_wrapper(func, config, binary_path):
     """Wrapper to spin up each task with its own SSH client"""
 
@@ -1037,18 +1189,17 @@ def threaded_deployment(config, binary_path, tasks):
                 fut.result()
             except Exception:
                 logger.error(f"{svc} raised an unhandled exception")
+'''
+
+
 def main():
-    debug_environment()
     base_path = os.path.dirname(os.path.abspath(__file__))
     config = get_config(base_path)
     binary_path = os.path.join(base_path, "..", "Releases")
-
     # Create SSH client object
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
     deploy = config["deploy"]
-
     try:
         if deploy.get("zookeeper") == "true":
             deploy_zookeeper(config, binary_path, ssh)
@@ -1078,55 +1229,11 @@ def main():
             deploy_api(config, binary_path, ssh)
         if deploy.get("nginx") == "true":
             deploy_nginx(config, binary_path, ssh)
-
     except Exception as e:
         logger.error(f"Deployment failed: {e}")
     finally:
         ssh.close()
-# def main():
-#     base_path = os.path.dirname(os.path.abspath(__file__))
-#     print("Starting Run")
-#     config = get_config(base_path)
-#     binary_path = os.path.join(base_path, "..", "Releases")
 
-#     tasks1 = []
-#     tasks2 = []
-#     deploy = config["deploy"]
-    
-#     print("configs done")
-#     if deploy["zookeeper"] == "true":
-#         tasks1.append(deploy_zookeeper)
-#     if deploy["kafka"] == "true":
-#         tasks1.append(deploy_kafka)
-#     if deploy["doris_fe"] == "true":
-#         tasks1.append(deploy_doris_fe)
-#     if deploy["doris_be"] == "true":
-#         tasks1.append(deploy_doris_be)
-#     if deploy["connect_fe_be"] == "true":
-#         print("I am here doris")
-#         tasks2.append(connect_doris_fe_and_be)
-#     if deploy["node_exporter"] == "true":
-#         tasks1.append(deploy_node_exporter)
-#     if deploy["kafka_exporter"] == "true":
-#         tasks2.append(deploy_kafka_exporter)
-#     if deploy["prometheus"] == "true":
-#         tasks1.append(deploy_prometheus)
-#     if deploy["grafana"] == "true":
-#         tasks1.append(deploy_grafana)
-#     if deploy["health_reports"] == "true":
-#         tasks1.append(deploy_health_reports)
-#     if deploy["recon"] == "true":
-#         tasks1.append(deploy_recon)
-#     if deploy["jobs"] == "true":
-#         tasks1.append(deploy_jobs)
-#     if deploy["api"] == "true":
-#         tasks1.append(deploy_api)
-#     if deploy["nginx"] == "true":
-#         tasks1.append(deploy_nginx)
-    
-#     print("checked which packags to install")
-#     threaded_deployment(config, binary_path, tasks1)
-#     threaded_deployment(config, binary_path, tasks2)
 
 if __name__ == "__main__":
     main()
