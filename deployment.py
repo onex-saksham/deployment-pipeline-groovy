@@ -86,8 +86,8 @@ import getpass
 def ssh_connection(ssh, hostname, username, ssh_path, port):
     try:
         # First try SSH key authentication with paramiko
-        ssh.connect(hostname=hostname, username=username, key_filename=ssh_path, port=port)
-        logger.info("Connected using password-less connectivity")
+        ssh.connect(hostname=hostname, username=username, port=port)
+        logger.info("Connected successfully using SSH Agent!")
         return True
     except Exception as e:
         logger.info(f"SSH key authentication failed: {e}")
