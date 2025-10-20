@@ -137,19 +137,18 @@ node {
 stage('Deployment Execution') {
     echo "Preparing Python environment and running deployment script..."
     
-    // This wrapper securely loads the SSH key and makes it available
+    // This wrapper securely handles the SSH key now that the user is correct
     sshagent(credentials: ['server-ssh-key']) {
         dir('Script') {
             sh '''
-                # This script now correctly runs as the 'jenkins' user
-                
                 echo "Creating Python virtual environment..."
                 python3 -m venv venv
 
                 echo "Installing dependencies..."
                 venv/bin/pip install -r requirements.txt
                 
-                echo "Running the deployment script with console logging..."
+                echo "Running the deployment script..."
+                # Add console logging to see the output live
                 export LOG_TO_CONSOLE=true
                 venv/bin/python3 deployment.py
             '''
