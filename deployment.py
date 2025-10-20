@@ -102,6 +102,8 @@ def deploy_zookeeper(config, binary_path, ssh):
                 run(ssh, f"cd {deployment_path}/kafka/config && "
                     f"echo {zookeeper_connection_string} >> zookeeper.properties")
 
+
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/zookeeper/zookeeper.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -168,6 +170,7 @@ def deploy_kafka(config, binary_path, ssh):
                 f"sed -i -e '/^EXTRA_ARGS=/i {jmx_command}' "
                 "kafka-server-start.sh")
             
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/kafka/kafka.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -217,6 +220,8 @@ def deploy_doris_fe(config, binary_path, ssh):
             if not i:
                 # ===== STEP 1: START MASTER NODE =====
                 logger.info("Step 1: Starting MASTER FE node")
+                
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/doris_fe/doris_fe.service", f"{service_path}")
                 run(ssh, f"cd {service_path} && "
@@ -278,6 +283,8 @@ def deploy_doris_fe(config, binary_path, ssh):
                 logger.info(f"Step 3: Starting follower WITH --helper flag for initial metadata sync")
 
                 # Create temporary service file with --helper flag
+                
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/doris_fe/doris_fe_follower.service",
                            f"{service_path}/doris_fe_follower.service")
@@ -393,6 +400,8 @@ def deploy_doris_be(config, binary_path, ssh):
                 "be.conf")
 
             with SCPClient(ssh.get_transport()) as scp:
+                
+                run(ssh, f"mkdir -p {service_path}")
                 scp.put(f"{binary_path}/Services/doris_be/doris_be.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
                 f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
@@ -474,6 +483,7 @@ def deploy_node_exporter(config, binary_path, ssh):
             run(ssh, f"cd {deployment_path} && "
                 f"mv node_exporter {node_exporter_path}")
             
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/node_exporter/node_exporter.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -516,6 +526,7 @@ def deploy_kafka_exporter(config, binary_path, ssh):
             run(ssh, f"cd {deployment_path} && "
                 "tar xf kafka_exporter.tar.xz")
 
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/kafka_exporter/kafka_exporter.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -611,6 +622,8 @@ def deploy_prometheus(config, binary_path, ssh):
             f"-e 's|__api_node_exporter__|{api_node_exporter}|g' "
             "prometheus.yml")
 
+
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/prometheus/prometheus.service", f"{service_path}")
         run(ssh, f"cd {service_path} && "
@@ -674,6 +687,9 @@ def deploy_grafana(config, binary_path, ssh):
             f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
             "dashboards.yaml")
 
+
+
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/grafana/grafana.service", f"{service_path}")
         run(ssh, f"cd {service_path} && "
@@ -917,6 +933,7 @@ def deploy_api(config, binary_path, ssh):
                          f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
                          f"{log4j_file_name}")
 
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
                 run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
@@ -1143,6 +1160,8 @@ def deploy_nginx(config, binary_path, ssh):
                          f'-e "s|{placeholder_port}|{nginx_port}|g" '
                          f'{deployment_path}/nginx/conf/nginx.conf')
         # Deploy systemd unit
+        
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/nginx/nginx.service", service_path)
 
