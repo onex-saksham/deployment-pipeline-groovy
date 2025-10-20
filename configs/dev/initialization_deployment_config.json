@@ -24,7 +24,7 @@
             "__tenant_id__"
         ]
     },
-    "base_user": "admin1a",
+    "base_user": "admin1",
     "user": "saksham",
     "deployment_type": "multi",
     "deployment_path": "/home/saksham/ODP/tools",
