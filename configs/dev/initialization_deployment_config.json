@@ -24,7 +24,7 @@
             "__tenant_id__"
         ]
     },
-    "base_user": "admin1",
+    "base_user": "jenkins",
     "user": "__ODP_user__",
     "deployment_type": "__deployment_type__",
     "deployment_path": "__deployment_path__",

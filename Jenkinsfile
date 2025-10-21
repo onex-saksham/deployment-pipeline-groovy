@@ -103,7 +103,7 @@ node {
 
                 echo "Updating merged configuration with build parameters..."
                 
-                config.base_user = "jenkins"
+                // config.base_user = "jenkins"
 
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
@@ -196,10 +196,10 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    finally {
-        stage('Cleanup') {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
-    }
+    // finally {
+    //     stage('Cleanup') {
+    //         echo "Cleaning up workspace..."
+    //         cleanWs()
+    //     }
+    // }
 }
