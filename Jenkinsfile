@@ -9,6 +9,8 @@ node {
 
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
+            booleanParam(name: 'DEPLOY_ALL_APPS', defaultValue: false, description: 'Select this to deploy all application services (Zookeeper to Nginx).'),
+
             booleanParam(name: 'ZOOKEEPER', defaultValue: false),
             booleanParam(name: 'KAFKA', defaultValue: false),
             booleanParam(name: 'NIFI', defaultValue: false),
@@ -69,8 +71,6 @@ node {
         stage('Gather Configuration Files') {
             echo "Fetching configuration files from ODP-configs repo..."
             dir('temp_config_repo') {
-                // Assuming this is a public repository. 
-                // If it's private, you'll need to add a withCredentials block.
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
@@ -128,14 +128,19 @@ node {
                     'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
                     'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
                 ]
+                
+                if (params.DEPLOY_ALL_APPS) {
+                    echo "DEPLOY_ALL_APPS is selected. Overriding individual service selections."
+                }
 
                 services.each { serviceName ->
                     def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-                    def paramValue = params[serviceName]
+                    def paramValue = params.DEPLOY_ALL_APPS ? true : params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
                     config.deploy[jsonKey] = paramValue.toString()
                 }
+                
                 
                 echo "Writing final updated configuration back to ${masterConfigFile}..."
                 writeJSON file: masterConfigFile, json: config, pretty: 4
