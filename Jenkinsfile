@@ -52,7 +52,6 @@ node {
                         extensions: [
                             [$class: 'GitLFSPull'],
                             [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                                [path: 'Jenkins/deployment-pipeline/Script/'],
                                 [path: 'Jenkins/deployment-pipeline/Releases/']
                             ]]
                         ]
@@ -62,7 +61,6 @@ node {
             }
 
             echo "Copying folders to the workspace root..."
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Script ./"
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
             
             echo "Successfully loaded Script and Releases directories."
@@ -84,13 +82,6 @@ node {
 
             echo "Successfully loaded configuration files."
         }
-
-        // stage('Patch Deployment Script') {
-        //     echo "Overwriting deployment.py with the CI-friendly version..."
-        //     sh 'cp deployment.py Script/'
-        //     echo "Script patched successfully."
-        // }
-       // ... previous stage 'Patch Deployment Script' ends here ...
 
        stage('Prepare and Update Config') {
             echo "Copying master config file for ${params.TARGET_ENV} into the Script/ directory..."
@@ -205,10 +196,10 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    // finally {
-    //     stage('Cleanup') {
-    //         echo "Cleaning up workspace..."
-    //         cleanWs()
-    //     }
-    // }
+    finally {
+        stage('Cleanup') {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+    }
 }
