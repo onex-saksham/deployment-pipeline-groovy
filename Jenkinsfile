@@ -71,52 +71,52 @@ node {
             echo "Script patched successfully."
         }
        stage('Prepare and Update Config') {
-    echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
-    sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
-    echo "Successfully loaded configuration files."
+            echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
+            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
+            echo "Successfully loaded configuration files."
 
-    script {
-        def configFile = 'Script/initialization_deployment_config.json'
-        
-        echo "Reading configuration from ${configFile}..."
-        def config = readJSON file: configFile
+            script {
+                def configFile = 'Script/initialization_deployment_config.json'
+                
+                echo "Reading configuration from ${configFile}..."
+                def config = readJSON file: configFile
 
-        echo "Updating configuration with build parameters..."
+                echo "Updating configuration with build parameters..."
 
-        // Add these two lines to tell Python which user's home directory to use
-        echo "Overriding user to 'jenkins' for this pipeline run..."
-        config.base_user = "jenkins"
-        config.user = "saksham"
+                // Add these two lines to tell Python which user's home directory to use
+                echo "Overriding user to 'jenkins' for this pipeline run..."
+                config.base_user = "jenkins"
+                config.user = "saksham"
 
-        if (!config.releases) { config.releases = [:] }
-        if (!config.deploy) { config.deploy = [:] }
-        
-        config.releases.new_version = params.DEPLOY_VERSION
-        
-        config.deploy_sms = params.SMS.toString()
-        config.deploy_rcs = params.RCS.toString()
-        config.deploy_whatsapp = params.Whatsapp.toString()
+                if (!config.releases) { config.releases = [:] }
+                if (!config.deploy) { config.deploy = [:] }
+                
+                config.releases.new_version = params.DEPLOY_VERSION
+                
+                config.deploy_sms = params.SMS.toString()
+                config.deploy_rcs = params.RCS.toString()
+                config.deploy_whatsapp = params.Whatsapp.toString()
 
-        def services = [
-            'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
-            'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
-            'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
-        ]
+                def services = [
+                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
+                    'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
+                    'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
+                ]
 
-        services.each { serviceName ->
-            def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-            def paramValue = params[serviceName]
-            
-            echo " - Setting service '${jsonKey}' to '${paramValue}'"
-            config.deploy[jsonKey] = paramValue.toString()
+                services.each { serviceName ->
+                    def jsonKey = serviceName.toLowerCase().replace(' ', '_')
+                    def paramValue = params[serviceName]
+                    
+                    echo " - Setting service '${jsonKey}' to '${paramValue}'"
+                    config.deploy[jsonKey] = paramValue.toString()
+                }
+                
+                echo "Writing updated configuration back to ${configFile}..."
+                writeJSON file: configFile, json: config, pretty: 4
+                
+                echo "Successfully updated initialization_deployment_config.json."
+            }
         }
-        
-        echo "Writing updated configuration back to ${configFile}..."
-        writeJSON file: configFile, json: config, pretty: 4
-        
-        echo "Successfully updated initialization_deployment_config.json."
-    }
-}
         
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"

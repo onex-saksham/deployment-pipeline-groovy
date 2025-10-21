@@ -192,10 +192,10 @@
             "sms": 22000,
             "warcs": 22001
         },
-        "deployment_version": "__deployment_version__",
+        "deployment_version": "3.0.0",
         "remote_jobs": "__remote_jobs__",
         "use_nginx": "__use_nginx__",
-        "erlang_registry_ip": "__erlang_registry_ip__",
+        "erlang_registry_ip": "10.20.3.78",
         "java_version": "17",
         "python_version": "3.12.0"
     },

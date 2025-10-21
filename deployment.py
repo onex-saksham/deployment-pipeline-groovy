@@ -666,7 +666,7 @@ def deploy_grafana(config, binary_path, ssh):
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Configurations/grafana/dashboards.yaml", f"{deployment_path}/grafana/conf/provisioning/dashboards")
         with SCPClient(ssh.get_transport()) as scp:
-            scp.put(f"{binary_path}/Dashboards/ODP-Dashboard.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
+            scp.put(f"{binary_path}/Dashboards/ODP-SMS-Dashboard.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Dashboards/TA-10.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
         with SCPClient(ssh.get_transport()) as scp:
