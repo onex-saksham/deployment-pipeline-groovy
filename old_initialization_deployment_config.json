@@ -25,25 +25,25 @@
         ]
     },
     "base_user": "admin1",
-    "user": "__ODP_user__",
-    "deployment_type": "__deployment_type__",
-    "deployment_path": "__deployment_path__",
-    "ssh_port": "__ssh_port__",
+    "user": "saksham",
+    "deployment_type": "multi",
+    "deployment_path": "/home/saksham/ODP/tools",
+    "ssh_port": "22",
     "deploy_whatsapp": "__wa__",
     "deploy_sms": "__sms__",
     "deploy_rcs": "__rcs__",
     "zookeeper": {
         "node_ip": [
-            "__zookeeper_ip__"
+            "10.20.3.78"
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/data/zookeeper-storage"
+            "storage": "/home/saksham/ODP/data/zookeeper"
         },
         "ports": {
-            "client": 2181,
-            "peer_to_peer": 2888,
-            "leader_election": 3888
+            "client": 12181,
+            "peer_to_peer": 12888,
+            "leader_election": 13888
         },
         "java_version": "17",
         "python_version": "3.12.0"
@@ -51,7 +51,7 @@
     "kraft_controller": {
         "deployment_path": "",
         "properties": {
-            "storage": "/data/kraft-controller-storage",
+            "storage": "/home/saksham/ODP/data/kraft-controller-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -63,16 +63,16 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "listener": 9093
+            "listener": 19093
         }
     },
     "kafka": {
         "broker_ip": [
-            "__kafka_ip__"
+            "10.20.3.82"
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/data/kafka-storage",
+            "storage": "/home/saksham/ODP/data/kafka-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -84,15 +84,15 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "jmx": 9091,
-            "listener": 9092
+            "jmx": 19091,
+            "listener": 19092
         },
         "java_version": "17",
         "python_version": "3.12.0"
     },
     "nifi": {
         "node_ip": [
-            "__nifi_ip__"
+            "10.20.3.86"
         ],
         "deployment_path": "",
         "properties": {
@@ -101,46 +101,46 @@
             "max_heap_memory": 8
         },
         "ports": {
-            "node_load_balance": 6342,
-            "http": 8080,
-            "remote_input_socket": 10443,
-            "registry": 18080,
-            "node_protocol": 11443
+            "node_load_balance": 16342,
+            "http": 18080,
+            "remote_input_socket": 20443,
+            "registry": 28080,
+            "node_protocol": 21443
         },
         "java_version": "21",
         "python_version": "3.12.0"
     },
     "doris_fe": {
         "node_ip": [
-            "__doris_fe_ip__"
+            "10.20.3.78"
         ],
         "deployment_path": "",
         "properties": {
             "log": "${DORIS_HOME}/log"
         },
         "ports": {
-            "http": 8030,
-            "edit_log": 9010,
-            "rpc": 9020,
-            "query": 9030
+            "http": 18030,
+            "edit_log": 19010,
+            "rpc": 19020,
+            "query": 19030
         },
         "java_version": "17",
         "python_version": "3.12.0"
     },
     "doris_be": {
         "node_ip": [
-            "__doris_be_ip__"
+            "10.20.3.82"
         ],
         "deployment_path": "",
         "properties": {
             "log": "${DORIS_HOME}/log",
-            "storage": "/data/doris-be-storage"
+            "storage": "/home/saksham/ODP/data/doris-be-storage"
         },
         "ports": {
-            "webserver": 8040,
-            "brpc": 8060,
-            "heartbeat_service": 9050,
-            "be": 9060
+            "webserver": 18040,
+            "brpc": 18060,
+            "heartbeat_service": 19050,
+            "be": 19060
         },
         "java_version": "17",
         "python_version": "3.12.0"
@@ -157,24 +157,24 @@
             "api"
         ],
         "ports": {
-            "listener": 9100
+            "listener": 19100
         }
     },
     "kafka_exporter": {
         "deployment_path": "",
         "ports": {
-            "listener": 9308
+            "listener": 19308
         }
     },
     "monitoring": {
-        "node_ip": "__monitoring_ip__",
+        "node_ip": "10.20.3.86",
         "deployment_path": "",
         "properties": {
-            "storage": "/data/grafana-storage"
+            "storage": "/home/saksham/ODP/data/grafana-storage"
         },
         "ports": {
-            "prometheus": 9090,
-            "grafana": 3000
+            "prometheus": 19090,
+            "grafana": 13000
         },
         "java_version": "17",
         "python_version": "3.12.0",
@@ -185,22 +185,22 @@
     },
     "api": {
         "node_ip": [
-            "__api_ip__"
+            "10.20.3.78"
         ],
         "deployment_path": "",
         "ports": {
-            "sms": 12000,
-            "warcs": 12001
+            "sms": 22000,
+            "warcs": 22001
         },
-        "deployment_version": "__deployment_version__",
+        "deployment_version": "3.0.0",
         "remote_jobs": "__remote_jobs__",
         "use_nginx": "__use_nginx__",
-        "erlang_registry_ip": "__erlang_registry_ip__",
+        "erlang_registry_ip": "10.20.3.78",
         "java_version": "17",
         "python_version": "3.12.0"
     },
     "backend_job": {
-        "node_ip": ["__backend_job_ip__"],
+        "node_ip": ["10.20.3.82"],
         "deployment_path": "",
         "nginx": [
             "doris_fe",
@@ -208,9 +208,9 @@
             "api_warcs"
         ],
         "ports": {
-            "doris_fe": 1080,
-            "api_sms": 1081,
-            "api_warcs": 1083
+            "doris_fe": 11080,
+            "api_sms": 11081,
+            "api_warcs": 11083
         },
         "java_version": "17",
         "python_version": "3.12.0"
