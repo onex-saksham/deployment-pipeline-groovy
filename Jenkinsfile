@@ -9,7 +9,7 @@ node {
 
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
-            booleanParam(name: 'Select_All', defaultValue: false, description: 'Select this to deploy all application services (Zookeeper to Nginx).'),
+            booleanParam(name: 'DEPLOY_ALL_APPS', defaultValue: false, description: 'Select this to deploy all application services (Zookeeper to Nginx).'),
 
             booleanParam(name: 'ZOOKEEPER', defaultValue: false),
             booleanParam(name: 'KAFKA', defaultValue: false),
@@ -129,13 +129,13 @@ node {
                     'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
                 ]
                 
-                if (params.Select_All) {
-                    echo "Select_All is selected. Overriding individual service selections."
+                if (params.DEPLOY_ALL_APPS) {
+                    echo "DEPLOY_ALL_APPS is selected. Overriding individual service selections."
                 }
 
                 services.each { serviceName ->
                     def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-                    def paramValue = params.Select_All ? true : params[serviceName]
+                    def paramValue = params.DEPLOY_ALL_APPS ? true : params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
                     config.deploy[jsonKey] = paramValue.toString()
@@ -205,10 +205,10 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    finally {
-        stage('Cleanup') {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
-    }
+    // finally {
+    //     stage('Cleanup') {
+    //         echo "Cleaning up workspace..."
+    //         cleanWs()
+    //     }
+    // }
 }
