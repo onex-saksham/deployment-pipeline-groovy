@@ -156,36 +156,36 @@ node {
         stage('Test Cases (Planned)') {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
-        // stage('Deployment Execution') {
-        //     echo "Preparing SSH key and Python environment..."
+        stage('Deployment Execution') {
+            echo "Preparing SSH key and Python environment..."
             
-        //     // Use withCredentials to load the key from Jenkins into a temporary file
-        //     withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-        //         try {
-        //             dir('Script') {
-        //                 sh '''
-        //                     echo "Setting up temporary SSH key..."
-        //                     mkdir -p /home/jenkins/.ssh
-        //                     cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
-        //                     chmod 600 /home/jenkins/.ssh/id_rsa
+            // Use withCredentials to load the key from Jenkins into a temporary file
+            withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+                try {
+                    dir('Script') {
+                        sh '''
+                            echo "Setting up temporary SSH key..."
+                            mkdir -p /home/jenkins/.ssh
+                            cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+                            chmod 600 /home/jenkins/.ssh/id_rsa
                             
-        //                     echo "Creating Python virtual environment..."
-        //                     python3 -m venv venv
+                            echo "Creating Python virtual environment..."
+                            python3 -m venv venv
 
-        //                     echo "Installing dependencies..."
-        //                     venv/bin/pip install -r requirements.txt
+                            echo "Installing dependencies..."
+                            venv/bin/pip install -r requirements.txt
                             
-        //                     echo "Running the deployment script..."
-        //                     export LOG_TO_CONSOLE=true
-        //                     venv/bin/python3 deployment.py
-        //                 '''
-        //             }
-        //         } finally {
-        //             echo "Cleaning up temporary SSH key..."
-        //             sh 'rm -rf /home/jenkins/.ssh'
-        //         }
-        //     }
-        // }
+                            echo "Running the deployment script..."
+                            export LOG_TO_CONSOLE=true
+                            venv/bin/python3 deployment.py
+                        '''
+                    }
+                } finally {
+                    echo "Cleaning up temporary SSH key..."
+                    sh 'rm -rf /home/jenkins/.ssh'
+                }
+            }
+        }
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
