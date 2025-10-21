@@ -1068,7 +1068,7 @@ def deploy_nginx(config, binary_path, ssh):
 
     try:
         logger.info(f"Deploying Nginx on: {backend_job['node_ip']}")
-        ssh_connection(ssh, backend_job["node_ip"], config["user"], ssh_path, config["ssh_port"])
+        ssh_connection(ssh, backend_job["node_ip"][0], config["user"], ssh_path, config["ssh_port"])
 
         run(ssh, f"mkdir -p {deployment_path}")
         with SCPClient(ssh.get_transport()) as scp:
