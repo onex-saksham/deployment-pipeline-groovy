@@ -3,6 +3,7 @@
     "deployment_type": "multi",
     "deployment_path": "/home/saksham/ODP/tools",
     "ssh_port": "22",
+    
     "zookeeper": {
         "node_ip": [
             "10.20.3.78"

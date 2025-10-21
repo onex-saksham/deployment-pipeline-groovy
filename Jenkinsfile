@@ -65,28 +65,54 @@ node {
             
             echo "Successfully loaded Script and Releases directories."
         }
-        stage('Patch Deployment Script') {
-            echo "Overwriting deployment.py with the CI-friendly version..."
-            sh 'cp deployment.py Script/'
-            echo "Script patched successfully."
-        }
-       stage('Prepare and Update Config') {
-            echo "Copying config files for ${params.TARGET_ENV} into the Script/ directory..."
-            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/*.json Script/"
+
+        stage('Gather Configuration Files') {
+            echo "Fetching configuration files from ODP-configs repo..."
+            dir('temp_config_repo') {
+                // Assuming this is a public repository. 
+                // If it's private, you'll need to add a withCredentials block.
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/onex-saksham/ODP-configs.git']]
+                ])
+            }
+
+            echo "Copying config files to the Script directory..."
+            sh "cp temp_config_repo/passwords.json Script/"
+            sh "cp temp_config_repo/smtp_config.json Script/"
+
             echo "Successfully loaded configuration files."
+        }
+
+        // stage('Patch Deployment Script') {
+        //     echo "Overwriting deployment.py with the CI-friendly version..."
+        //     sh 'cp deployment.py Script/'
+        //     echo "Script patched successfully."
+        // }
+       // ... previous stage 'Patch Deployment Script' ends here ...
+
+       stage('Prepare and Update Config') {
+            echo "Copying master config file for ${params.TARGET_ENV} into the Script/ directory..."
+            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json Script/"
+            echo "Successfully loaded master configuration file."
 
             script {
-                def configFile = 'Script/initialization_deployment_config.json'
+                def masterConfigFile = 'Script/initialization_deployment_config.json'
+                def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
                 
-                echo "Reading configuration from ${configFile}..."
-                def config = readJSON file: configFile
+                echo "Reading master configuration from ${masterConfigFile}..."
+                def config = readJSON file: masterConfigFile
 
-                echo "Updating configuration with build parameters..."
+                echo "Reading developer override configuration from ${developerConfigFile}..."
+                def developerConfig = readJSON file: developerConfigFile
 
-                // Add these two lines to tell Python which user's home directory to use
-                echo "Overriding user to 'jenkins' for this pipeline run..."
+                echo "Merging developer overrides into master configuration..."
+                config.putAll(developerConfig)
+
+                echo "Updating merged configuration with build parameters..."
+                
                 config.base_user = "jenkins"
-                config.user = "saksham"
 
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
@@ -111,8 +137,8 @@ node {
                     config.deploy[jsonKey] = paramValue.toString()
                 }
                 
-                echo "Writing updated configuration back to ${configFile}..."
-                writeJSON file: configFile, json: config, pretty: 4
+                echo "Writing final updated configuration back to ${masterConfigFile}..."
+                writeJSON file: masterConfigFile, json: config, pretty: 4
                 
                 echo "Successfully updated initialization_deployment_config.json."
             }
@@ -134,36 +160,36 @@ node {
         stage('Test Cases (Planned)') {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
-        stage('Deployment Execution') {
-            echo "Preparing SSH key and Python environment..."
+        // stage('Deployment Execution') {
+        //     echo "Preparing SSH key and Python environment..."
             
-            // Use withCredentials to load the key from Jenkins into a temporary file
-            withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-                try {
-                    dir('Script') {
-                        sh '''
-                            echo "Setting up temporary SSH key..."
-                            mkdir -p /home/jenkins/.ssh
-                            cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
-                            chmod 600 /home/jenkins/.ssh/id_rsa
+        //     // Use withCredentials to load the key from Jenkins into a temporary file
+        //     withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+        //         try {
+        //             dir('Script') {
+        //                 sh '''
+        //                     echo "Setting up temporary SSH key..."
+        //                     mkdir -p /home/jenkins/.ssh
+        //                     cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
+        //                     chmod 600 /home/jenkins/.ssh/id_rsa
                             
-                            echo "Creating Python virtual environment..."
-                            python3 -m venv venv
+        //                     echo "Creating Python virtual environment..."
+        //                     python3 -m venv venv
 
-                            echo "Installing dependencies..."
-                            venv/bin/pip install -r requirements.txt
+        //                     echo "Installing dependencies..."
+        //                     venv/bin/pip install -r requirements.txt
                             
-                            echo "Running the deployment script..."
-                            export LOG_TO_CONSOLE=true
-                            venv/bin/python3 deployment.py
-                        '''
-                    }
-                } finally {
-                    echo "Cleaning up temporary SSH key..."
-                    sh 'rm -rf /home/jenkins/.ssh'
-                }
-            }
-        }
+        //                     echo "Running the deployment script..."
+        //                     export LOG_TO_CONSOLE=true
+        //                     venv/bin/python3 deployment.py
+        //                 '''
+        //             }
+        //         } finally {
+        //             echo "Cleaning up temporary SSH key..."
+        //             sh 'rm -rf /home/jenkins/.ssh'
+        //         }
+        //     }
+        // }
 
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
