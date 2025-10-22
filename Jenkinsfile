@@ -105,24 +105,25 @@ node {
                 topLevelProperties.each { property ->
                     if (developerConfig[property] != null) {
                         config[property] = developerConfig[property]
+                        echo "Updated top-level property '${property}': ${config[property]}"
                     }
                 }
 
-                // Merge service configurations recursively
-                def mergeServiceConfig = { masterService, devService ->
-                    if (devService == null) return masterService
+                // Function to recursively merge maps
+                def mergeMaps = { masterMap, devMap ->
+                    if (devMap == null) return masterMap
                     
-                    devService.each { key, value ->
+                    devMap.each { key, value ->
                         if (value instanceof Map) {
-                            if (!masterService[key]) masterService[key] = [:]
-                            masterService[key] = mergeServiceConfig(masterService[key], value)
+                            if (!masterMap[key]) masterMap[key] = [:]
+                            masterMap[key] = mergeMaps(masterMap[key], value)
                         } else if (value instanceof List) {
-                            masterService[key] = value
-                        } else {
-                            masterService[key] = value
+                            masterMap[key] = value
+                        } else if (value != null) {
+                            masterMap[key] = value
                         }
                     }
-                    return masterService
+                    return masterMap
                 }
 
                 // Merge individual service configurations
@@ -134,7 +135,8 @@ node {
                 servicesToMerge.each { service ->
                     if (developerConfig[service] != null) {
                         if (!config[service]) config[service] = [:]
-                        config[service] = mergeServiceConfig(config[service], developerConfig[service])
+                        config[service] = mergeMaps(config[service], developerConfig[service])
+                        echo "Merged service configuration for: ${service}"
                     }
                 }
 
