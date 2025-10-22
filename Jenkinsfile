@@ -112,9 +112,10 @@ node {
 
                 // 🔧 Convert to pure maps
                 // 🔧 Convert JSONObjects to Groovy Maps
-                def jsonToMap(obj) {
+                def jsonToMap = { obj ->
                     return readJSON(text: obj.toString())
                 }
+
 
 
                 if (config instanceof net.sf.json.JSONObject) {
