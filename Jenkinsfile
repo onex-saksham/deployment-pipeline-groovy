@@ -1,3 +1,15 @@
+def deepMerge(Map master, Map override) {
+    def merged = master.clone()
+    override.each { key, overrideValue ->
+        if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
+            merged[key] = deepMerge(merged[key], overrideValue)
+        } else {
+            merged[key] = overrideValue
+        }
+    }
+    return merged
+}
+
 node {    
     properties([
         parameters([
@@ -89,17 +101,17 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
-                def deepMerge(Map master, Map override) {
-                    def merged = master.clone()
-                    override.each { key, overrideValue ->
-                        if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
-                            merged[key] = deepMerge(merged[key], overrideValue)
-                        } else {
-                            merged[key] = overrideValue
-                        }
-                    }
-                    return merged
-                }
+                // def deepMerge(Map master, Map override) {
+                //     def merged = master.clone()
+                //     override.each { key, overrideValue ->
+                //         if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
+                //             merged[key] = deepMerge(merged[key], overrideValue)
+                //         } else {
+                //             merged[key] = overrideValue
+                //         }
+                //     }
+                //     return merged
+                // }
 
                 def masterConfigFile = 'Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
