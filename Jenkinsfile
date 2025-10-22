@@ -1,4 +1,15 @@
 node {
+    def deepMerge(Map master, Map override) {
+        def merged = master.clone() 
+        override.each { key, overrideValue ->
+            if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
+                merged[key] = deepMerge(merged[key], overrideValue)
+            } else {
+                merged[key] = overrideValue
+            }
+        }
+        return merged
+    }
     properties([
         parameters([
             booleanParam(name: 'SMS', defaultValue: false),
@@ -89,6 +100,18 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
+                def deepMerge(Map master, Map override) {
+                    def merged = master.clone()
+                    override.each { key, overrideValue ->
+                        if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
+                            merged[key] = deepMerge(merged[key], overrideValue)
+                        } else {
+                            merged[key] = overrideValue
+                        }
+                    }
+                    return merged
+                }
+
                 def masterConfigFile = 'Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
                 
@@ -99,12 +122,10 @@ node {
                 def developerConfig = readJSON file: developerConfigFile
 
                 echo "Merging developer overrides into master configuration..."
-                config.putAll(developerConfig)
+                config = deepMerge(config, developerConfig)
 
                 echo "Updating merged configuration with build parameters..."
                 
-                // config.base_user = "jenkins"
-
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
                 
@@ -131,7 +152,6 @@ node {
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
                     config.deploy[jsonKey] = paramValue.toString()
                 }
-                
                 
                 echo "Writing final updated configuration back to ${masterConfigFile}..."
                 writeJSON file: masterConfigFile, json: config, pretty: 4
