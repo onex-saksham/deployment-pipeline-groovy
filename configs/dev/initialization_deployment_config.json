@@ -38,7 +38,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/zookeeper-storage"
+            "storage": "/home/saksham/ODP/data/zookeeper-storage"
         },
         "ports": {
             "client": 12181,
@@ -51,7 +51,7 @@
     "kraft_controller": {
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kraft-controller-storage",
+            "storage": "/home/saksham/ODP/data/kraft-controller-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -72,7 +72,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kafka-storage",
+            "storage": "/home/saksham/ODP/data/kafka-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -96,7 +96,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "zk_root_node": "/home/saksham/nifi",
+            "zk_root_node": "/home/saksham/ODP/nifi",
             "min_heap_memory": 4,
             "max_heap_memory": 8
         },
@@ -134,7 +134,7 @@
         "deployment_path": "",
         "properties": {
             "log": "${DORIS_HOME}/log",
-            "storage": "/home/saksham/data/doris-be-storage"
+            "storage": "/home/saksham/ODP/data/doris-be-storage"
         },
         "ports": {
             "webserver": 18040,
@@ -170,7 +170,7 @@
         "node_ip": "__monitoring_ip__",
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/grafana-storage"
+            "storage": "/home/saksham/ODP/data/grafana-storage"
         },
         "ports": {
             "prometheus": 19090,
