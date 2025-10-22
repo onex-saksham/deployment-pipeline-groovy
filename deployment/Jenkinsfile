@@ -36,8 +36,8 @@ node {
             checkout scm
         }
 
-        stage('Gather Script and Releases') {
-            echo "Fetching Script and Releases folders from private repo..."
+        stage('Gather Source Files') {
+            echo "Fetching Releases and Config folders from private repo..."
             dir('temp_private_repo') {
                 withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
@@ -52,7 +52,8 @@ node {
                         extensions: [
                             [$class: 'GitLFSPull'],
                             [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                                [path: 'Jenkins/deployment-pipeline/Releases/']
+                                [path: 'Jenkins/deployment-pipeline/Releases/'],
+                                [path: 'odp-config/deployment/']
                             ]]
                         ]
                     ])
@@ -60,27 +61,14 @@ node {
                 }
             }
 
-            echo "Copying folders to the workspace root..."
+            echo "Copying Releases folder to the workspace root..."
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
             
-            echo "Successfully loaded Script and Releases directories."
-        }
-
-        stage('Gather Configuration Files') {
-            echo "Fetching configuration files from ODP-configs repo..."
-            dir('temp_config_repo') {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: 'https://github.com/onex-saksham/ODP-configs.git']]
-                ])
-            }
-
             echo "Copying config files to the Script directory..."
-            sh "cp temp_config_repo/passwords.json deployment/Script/"
-            sh "cp temp_config_repo/smtp_config.json deployment/Script/"
+            sh "cp temp_private_repo/odp-config/deployment/passwords.json deployment/Script/"
+            sh "cp temp_private_repo/odp-config/deployment/smtp_config.json deployment/Script/"
 
-            echo "Successfully loaded configuration files."
+            echo "Successfully loaded all source files."
         }
 
        stage('Prepare and Update Config') {
