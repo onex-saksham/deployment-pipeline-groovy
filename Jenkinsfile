@@ -98,53 +98,52 @@ node {
                 echo "Reading developer override configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                echo "Merging developer overrides into master configuration..."
+                echo "Applying hardcoded developer overrides to master configuration..."
+
+                config.user = developerConfig.user
+                config.deployment_type = developerConfig.deployment_type
+                config.deployment_path = developerConfig.deployment_path
+                config.ssh_port = developerConfig.ssh_port
+
+                config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
+                config.zookeeper.properties.storage = developerConfig.zookeeper.properties.storage
+                config.zookeeper.ports = developerConfig.zookeeper.ports
+
+                config.kraft_controller.properties.storage = developerConfig.kraft_controller.properties.storage
+                config.kraft_controller.ports = developerConfig.kraft_controller.ports
                 
-                // Merge top-level properties
-                def topLevelProperties = ['user', 'deployment_type', 'deployment_path', 'ssh_port']
-                topLevelProperties.each { property ->
-                    if (developerConfig[property] != null) {
-                        config[property] = developerConfig[property]
-                        echo "Updated top-level property '${property}': ${config[property]}"
-                    }
-                }
+                config.kafka.broker_ip = developerConfig.kafka.broker_ip
+                config.kafka.properties.storage = developerConfig.kafka.properties.storage
+                config.kafka.ports = developerConfig.kafka.ports
 
-                // Function to recursively merge maps
-                def mergeMaps = { masterMap, devMap ->
-                    if (devMap == null) return masterMap
-                    
-                    devMap.each { key, value ->
-                        if (value instanceof Map) {
-                            if (!masterMap[key]) masterMap[key] = [:]
-                            masterMap[key] = mergeMaps(masterMap[key], value)
-                        } else if (value instanceof List) {
-                            masterMap[key] = value
-                        } else if (value != null) {
-                            masterMap[key] = value
-                        }
-                    }
-                    return masterMap
-                }
+                config.nifi.node_ip = developerConfig.nifi.node_ip
+                config.nifi.ports = developerConfig.nifi.ports
 
-                // Merge individual service configurations
-                def servicesToMerge = [
-                    'zookeeper', 'kraft_controller', 'kafka', 'nifi', 'doris_fe', 'doris_be',
-                    'node_exporter', 'kafka_exporter', 'monitoring', 'api', 'backend_job', 'health_report'
-                ]
+                config.doris_fe.node_ip = developerConfig.doris_fe.node_ip
+                config.doris_fe.ports = developerConfig.doris_fe.ports
+
+                config.doris_be.node_ip = developerConfig.doris_be.node_ip
+                config.doris_be.properties.storage = developerConfig.doris_be.properties.storage
+                config.doris_be.ports = developerConfig.doris_be.ports
                 
-                servicesToMerge.each { service ->
-                    if (developerConfig[service] != null) {
-                        if (!config[service]) config[service] = [:]
-                        config[service] = mergeMaps(config[service], developerConfig[service])
-                        echo "Merged service configuration for: ${service}"
-                    }
-                }
+                config.node_exporter.ports = developerConfig.node_exporter.ports
+                config.kafka_exporter.ports = developerConfig.kafka_exporter.ports
 
-                echo "Updating merged configuration with build parameters..."
+                config.monitoring.node_ip = developerConfig.monitoring.node_ip
+                config.monitoring.properties.storage = developerConfig.monitoring.properties.storage
+                config.monitoring.ports = developerConfig.monitoring.ports
+
+                config.api.node_ip = developerConfig.api.node_ip
+                config.api.ports = developerConfig.api.ports
+                config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
+
+                config.backend_job.node_ip = developerConfig.backend_job.node_ip
+                config.backend_job.ports = developerConfig.backend_job.ports
                 
-                // Update base configuration
-                config.base_user = "jenkins"
+                echo "Finished applying developer overrides."
 
+                echo "Updating final configuration with build parameters..."
+                
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
                 
