@@ -111,8 +111,14 @@ node {
                 def developerConfig = readJSON file: developerConfigFile
 
                 // 🔧 Convert to pure maps
-                config = config as Map
-                developerConfig = developerConfig as Map
+                // 🔧 Convert JSONObjects to Groovy Maps
+                if (config instanceof net.sf.json.JSONObject) {
+                    config = new groovy.json.JsonSlurperClassic().parseText(config.toString())
+                }
+                if (developerConfig instanceof net.sf.json.JSONObject) {
+                    developerConfig = new groovy.json.JsonSlurperClassic().parseText(developerConfig.toString())
+                }
+
 
                 echo "Merging developer overrides into master configuration..."
                 config = deepMerge(config, developerConfig)
