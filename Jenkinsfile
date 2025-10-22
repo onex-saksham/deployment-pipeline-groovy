@@ -100,45 +100,29 @@ node {
 
                 echo "Applying hardcoded developer overrides to master configuration..."
 
+                // == Apply Top-Level Overrides ==
                 config.user = developerConfig.user
                 config.deployment_type = developerConfig.deployment_type
                 config.deployment_path = developerConfig.deployment_path
                 config.ssh_port = developerConfig.ssh_port
 
+                // == Apply Service-Specific Overrides (only what exists in developer config) ==
                 config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
-                config.zookeeper.properties.storage = developerConfig.zookeeper.properties.storage
-                config.zookeeper.ports = developerConfig.zookeeper.ports
-
-                config.kraft_controller.properties.storage = developerConfig.kraft_controller.properties.storage
-                config.kraft_controller.ports = developerConfig.kraft_controller.ports
-                
                 config.kafka.broker_ip = developerConfig.kafka.broker_ip
-                config.kafka.properties.storage = developerConfig.kafka.properties.storage
-                config.kafka.ports = developerConfig.kafka.ports
-
                 config.nifi.node_ip = developerConfig.nifi.node_ip
-                config.nifi.ports = developerConfig.nifi.ports
-
                 config.doris_fe.node_ip = developerConfig.doris_fe.node_ip
-                config.doris_fe.ports = developerConfig.doris_fe.ports
-
                 config.doris_be.node_ip = developerConfig.doris_be.node_ip
-                config.doris_be.properties.storage = developerConfig.doris_be.properties.storage
-                config.doris_be.ports = developerConfig.doris_be.ports
                 
-                config.node_exporter.ports = developerConfig.node_exporter.ports
-                config.kafka_exporter.ports = developerConfig.kafka_exporter.ports
-
                 config.monitoring.node_ip = developerConfig.monitoring.node_ip
-                config.monitoring.properties.storage = developerConfig.monitoring.properties.storage
-                config.monitoring.ports = developerConfig.monitoring.ports
+                config.monitoring.smtp = developerConfig.monitoring.smtp
 
                 config.api.node_ip = developerConfig.api.node_ip
-                config.api.ports = developerConfig.api.ports
+                config.api.deployment_version = developerConfig.api.deployment_version
+                config.api.remote_jobs = developerConfig.api.remote_jobs
+                config.api.use_nginx = developerConfig.api.use_nginx
                 config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
 
                 config.backend_job.node_ip = developerConfig.backend_job.node_ip
-                config.backend_job.ports = developerConfig.backend_job.ports
                 
                 echo "Finished applying developer overrides."
 
