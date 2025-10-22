@@ -112,12 +112,17 @@ node {
 
                 // 🔧 Convert to pure maps
                 // 🔧 Convert JSONObjects to Groovy Maps
+                def jsonToMap(obj) {
+                    return readJSON text: obj.toString()
+                }
+
                 if (config instanceof net.sf.json.JSONObject) {
-                    config = new groovy.json.JsonSlurperClassic().parseText(config.toString())
+                    config = jsonToMap(config)
                 }
                 if (developerConfig instanceof net.sf.json.JSONObject) {
-                    developerConfig = new groovy.json.JsonSlurperClassic().parseText(developerConfig.toString())
+                    developerConfig = jsonToMap(developerConfig)
                 }
+
 
 
                 echo "Merging developer overrides into master configuration..."
