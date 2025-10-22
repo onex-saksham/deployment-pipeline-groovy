@@ -1,16 +1,4 @@
-def deepMerge(Map master, Map override) {
-    def merged = master.clone()
-    override.each { key, overrideValue ->
-        if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
-            merged[key] = deepMerge(merged[key], overrideValue)
-        } else {
-            merged[key] = overrideValue
-        }
-    }
-    return merged
-}
-
-node {    
+node {
     properties([
         parameters([
             booleanParam(name: 'SMS', defaultValue: false),
@@ -103,49 +91,35 @@ node {
             script {
                 def masterConfigFile = 'Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
-
+                
                 echo "Reading master configuration from ${masterConfigFile}..."
                 def config = readJSON file: masterConfigFile
 
                 echo "Reading developer override configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                // 🔧 Convert to pure maps
-                // 🔧 Convert JSONObjects to Groovy Maps
-                def jsonToMap = { obj ->
-                    return readJSON(text: obj.toString())
-                }
-
-
-
-                if (config instanceof net.sf.json.JSONObject) {
-                    config = jsonToMap(config)
-                }
-                if (developerConfig instanceof net.sf.json.JSONObject) {
-                    developerConfig = jsonToMap(developerConfig)
-                }
-
-
-
                 echo "Merging developer overrides into master configuration..."
-                config = deepMerge(config, developerConfig)
+                config.putAll(developerConfig)
 
                 echo "Updating merged configuration with build parameters..."
+                
+                // config.base_user = "jenkins"
+
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
-
+                
                 config.releases.new_version = params.DEPLOY_VERSION
-
+                
                 config.deploy_sms = params.SMS.toString()
                 config.deploy_rcs = params.RCS.toString()
                 config.deploy_whatsapp = params.Whatsapp.toString()
 
                 def services = [
-                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE',
-                    'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS',
+                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
+                    'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
                     'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX'
                 ]
-
+                
                 if (params.Select_All) {
                     echo "Select_All is selected. Overriding individual service selections."
                 }
@@ -153,17 +127,18 @@ node {
                 services.each { serviceName ->
                     def jsonKey = serviceName.toLowerCase().replace(' ', '_')
                     def paramValue = params.Select_All ? true : params[serviceName]
+                    
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
                     config.deploy[jsonKey] = paramValue.toString()
                 }
-
+                
+                
                 echo "Writing final updated configuration back to ${masterConfigFile}..."
                 writeJSON file: masterConfigFile, json: config, pretty: 4
-
+                
                 echo "Successfully updated initialization_deployment_config.json."
             }
         }
-
         
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
