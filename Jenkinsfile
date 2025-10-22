@@ -89,6 +89,21 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
+                // Define a function for deep merging two maps (JSON objects)
+                def deepMerge(Map base, Map override) {
+                    def result = new LinkedHashMap<>(base) // Start with a copy of the base map
+                    override.each { key, value ->
+                        if (result.containsKey(key) && result[key] instanceof Map && value instanceof Map) {
+                            // If both the base and override have a map for the same key, merge them recursively
+                            result[key] = deepMerge(result[key], value)
+                        } else {
+                            // Otherwise, the override value wins
+                            result[key] = value
+                        }
+                    }
+                    return result
+                }
+
                 def masterConfigFile = 'Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
                 
@@ -98,21 +113,19 @@ node {
                 echo "Reading developer override configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                echo "Merging developer overrides into master configuration..."
-                config.putAll(developerConfig)
+                echo "Performing a deep merge of developer overrides into master configuration..."
+                def mergedConfig = deepMerge(config, developerConfig)
 
                 echo "Updating merged configuration with build parameters..."
                 
-                // config.base_user = "jenkins"
-
-                if (!config.releases) { config.releases = [:] }
-                if (!config.deploy) { config.deploy = [:] }
+                if (!mergedConfig.releases) { mergedConfig.releases = [:] }
+                if (!mergedConfig.deploy) { mergedConfig.deploy = [:] }
                 
-                config.releases.new_version = params.DEPLOY_VERSION
+                mergedConfig.releases.new_version = params.DEPLOY_VERSION
                 
-                config.deploy_sms = params.SMS.toString()
-                config.deploy_rcs = params.RCS.toString()
-                config.deploy_whatsapp = params.Whatsapp.toString()
+                mergedConfig.deploy_sms = params.SMS.toString()
+                mergedConfig.deploy_rcs = params.RCS.toString()
+                mergedConfig.deploy_whatsapp = params.Whatsapp.toString()
 
                 def services = [
                     'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
@@ -129,12 +142,11 @@ node {
                     def paramValue = params.Select_All ? true : params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.deploy[jsonKey] = paramValue.toString()
+                    mergedConfig.deploy[jsonKey] = paramValue.toString()
                 }
                 
-                
                 echo "Writing final updated configuration back to ${masterConfigFile}..."
-                writeJSON file: masterConfigFile, json: config, pretty: 4
+                writeJSON file: masterConfigFile, json: mergedConfig, pretty: 4
                 
                 echo "Successfully updated initialization_deployment_config.json."
             }
