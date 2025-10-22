@@ -77,19 +77,20 @@ node {
             }
 
             echo "Copying config files to the Script directory..."
-            sh "cp temp_config_repo/passwords.json Script/"
-            sh "cp temp_config_repo/smtp_config.json Script/"
+            sh "cp temp_config_repo/passwords.json deployment/Script/"
+            sh "cp temp_config_repo/smtp_config.json deployment/Script/"
 
             echo "Successfully loaded configuration files."
         }
 
        stage('Prepare and Update Config') {
             echo "Copying master config file for ${params.TARGET_ENV} into the Script/ directory..."
-            sh "cp configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json Script/"
+            sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json deployment/Script/"
             echo "Successfully loaded master configuration file."
 
             script {
-                def masterConfigFile = 'Script/initialization_deployment_config.json'
+                // UPDATED PATH
+                def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
                 
                 echo "Reading master configuration from ${masterConfigFile}..."
@@ -100,13 +101,11 @@ node {
 
                 echo "Applying hardcoded developer overrides to master configuration..."
 
-                // == Apply Top-Level Overrides ==
                 config.user = developerConfig.user
                 config.deployment_type = developerConfig.deployment_type
                 config.deployment_path = developerConfig.deployment_path
                 config.ssh_port = developerConfig.ssh_port
 
-                // == Apply Service-Specific Overrides (only what exists in developer config) ==
                 config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
                 config.kafka.broker_ip = developerConfig.kafka.broker_ip
                 config.nifi.node_ip = developerConfig.nifi.node_ip
@@ -165,7 +164,7 @@ node {
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
             
-            sh 'cat Script/initialization_deployment_config.json'
+            sh 'cat deployment/Script/initialization_deployment_config.json'
             
             input(
                 message: 'Please review the deployment configuration above. Do you want to proceed?',
@@ -181,10 +180,10 @@ node {
         stage('Deployment Execution') {
             echo "Preparing SSH key and Python environment..."
             
-            // Use withCredentials to load the key from Jenkins into a temporary file
             withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
                 try {
-                    dir('Script') {
+                    // UPDATED PATH
+                    dir('deployment/Script') {
                         sh '''
                             echo "Setting up temporary SSH key..."
                             mkdir -p /home/jenkins/.ssh
@@ -218,10 +217,4 @@ node {
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
-    // finally {
-    //     stage('Cleanup') {
-    //         echo "Cleaning up workspace..."
-    //         cleanWs()
-    //     }
-    // }
 }
