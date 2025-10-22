@@ -44,7 +44,7 @@ node {
 
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: '*/aura--8150-test-branch']],
+                        branches: [[name: '*/aura--8150-test-branch-trying-to-test-noida-vm-with-no-requirement-versions']],
                         userRemoteConfigs: [[
                             url: 'https://github.com/1xtel/ODP.git',
                             credentialsId: 'private-github-token'
