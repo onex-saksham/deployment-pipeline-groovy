@@ -89,21 +89,6 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
-                // Define a function for deep merging two maps (JSON objects)
-                def deepMerge(Map base, Map override) {
-                    def result = new LinkedHashMap<>(base) // Start with a copy of the base map
-                    override.each { key, value ->
-                        if (result.containsKey(key) && result[key] instanceof Map && value instanceof Map) {
-                            // If both the base and override have a map for the same key, merge them recursively
-                            result[key] = deepMerge(result[key], value)
-                        } else {
-                            // Otherwise, the override value wins
-                            result[key] = value
-                        }
-                    }
-                    return result
-                }
-
                 def masterConfigFile = 'Script/initialization_deployment_config.json'
                 def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
                 
@@ -113,19 +98,59 @@ node {
                 echo "Reading developer override configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                echo "Performing a deep merge of developer overrides into master configuration..."
-                def mergedConfig = deepMerge(config, developerConfig)
+                echo "Merging developer overrides into master configuration..."
+                
+                // Merge top-level properties
+                def topLevelProperties = ['user', 'deployment_type', 'deployment_path', 'ssh_port']
+                topLevelProperties.each { property ->
+                    if (developerConfig[property] != null) {
+                        config[property] = developerConfig[property]
+                    }
+                }
+
+                // Merge service configurations recursively
+                def mergeServiceConfig = { masterService, devService ->
+                    if (devService == null) return masterService
+                    
+                    devService.each { key, value ->
+                        if (value instanceof Map) {
+                            if (!masterService[key]) masterService[key] = [:]
+                            masterService[key] = mergeServiceConfig(masterService[key], value)
+                        } else if (value instanceof List) {
+                            masterService[key] = value
+                        } else {
+                            masterService[key] = value
+                        }
+                    }
+                    return masterService
+                }
+
+                // Merge individual service configurations
+                def servicesToMerge = [
+                    'zookeeper', 'kraft_controller', 'kafka', 'nifi', 'doris_fe', 'doris_be',
+                    'node_exporter', 'kafka_exporter', 'monitoring', 'api', 'backend_job', 'health_report'
+                ]
+                
+                servicesToMerge.each { service ->
+                    if (developerConfig[service] != null) {
+                        if (!config[service]) config[service] = [:]
+                        config[service] = mergeServiceConfig(config[service], developerConfig[service])
+                    }
+                }
 
                 echo "Updating merged configuration with build parameters..."
                 
-                if (!mergedConfig.releases) { mergedConfig.releases = [:] }
-                if (!mergedConfig.deploy) { mergedConfig.deploy = [:] }
+                // Update base configuration
+                config.base_user = "jenkins"
+
+                if (!config.releases) { config.releases = [:] }
+                if (!config.deploy) { config.deploy = [:] }
                 
-                mergedConfig.releases.new_version = params.DEPLOY_VERSION
+                config.releases.new_version = params.DEPLOY_VERSION
                 
-                mergedConfig.deploy_sms = params.SMS.toString()
-                mergedConfig.deploy_rcs = params.RCS.toString()
-                mergedConfig.deploy_whatsapp = params.Whatsapp.toString()
+                config.deploy_sms = params.SMS.toString()
+                config.deploy_rcs = params.RCS.toString()
+                config.deploy_whatsapp = params.Whatsapp.toString()
 
                 def services = [
                     'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
@@ -142,11 +167,11 @@ node {
                     def paramValue = params.Select_All ? true : params[serviceName]
                     
                     echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    mergedConfig.deploy[jsonKey] = paramValue.toString()
+                    config.deploy[jsonKey] = paramValue.toString()
                 }
                 
                 echo "Writing final updated configuration back to ${masterConfigFile}..."
-                writeJSON file: masterConfigFile, json: mergedConfig, pretty: 4
+                writeJSON file: masterConfigFile, json: config, pretty: 4
                 
                 echo "Successfully updated initialization_deployment_config.json."
             }
