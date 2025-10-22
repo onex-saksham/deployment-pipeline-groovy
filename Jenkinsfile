@@ -1,15 +1,4 @@
-node {
-    def deepMerge(Map master, Map override) {
-        def merged = master.clone() 
-        override.each { key, overrideValue ->
-            if (merged.containsKey(key) && merged[key] instanceof Map && overrideValue instanceof Map) {
-                merged[key] = deepMerge(merged[key], overrideValue)
-            } else {
-                merged[key] = overrideValue
-            }
-        }
-        return merged
-    }
+node {    
     properties([
         parameters([
             booleanParam(name: 'SMS', defaultValue: false),
