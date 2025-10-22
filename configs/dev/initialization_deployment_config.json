@@ -134,7 +134,7 @@
         "deployment_path": "",
         "properties": {
             "log": "${DORIS_HOME}/log",
-            "storage": "/data/doris-be-storage"
+            "storage": "/home/saksham/data/doris-be-storage"
         },
         "ports": {
             "webserver": 18040,
