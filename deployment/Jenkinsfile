@@ -127,6 +127,7 @@ node {
                 config.api.use_nginx = developerConfig.api.use_nginx
                 config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
 
+                if (!config.backend_job) { config.backend_job = [:] }
                 config.backend_job.node_ip = developerConfig.backend_job.node_ip
                 config.backend_job.ID_DESC_URL = developerConfig.backend_job.ID_DESC_URL
                 config.backend_job.ZIP_HOST_IP = developerConfig.backend_job.ZIP_HOST_IP
@@ -134,7 +135,7 @@ node {
                 config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
                 config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
                 config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
-
+                
                 config.schema_registry.
                 node_ip = developerConfig.schema_registry.node_ip
                 config.nginx.node_ip = developerConfig.nginx.node_ip

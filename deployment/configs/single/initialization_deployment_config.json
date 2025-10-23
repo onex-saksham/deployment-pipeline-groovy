@@ -210,6 +210,7 @@
         "java_version": "17",
         "python_version": "3.12.0"
     },
+    
     "backend_job": {
         "node_ip": ["__backend_job_ip__"],
         "ID_DESC_URL": "__ID_DESC_URL__",
