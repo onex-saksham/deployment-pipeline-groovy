@@ -135,7 +135,6 @@ node {
                 config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
                 config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
                 config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
-                
                 config.schema_registry.
                 node_ip = developerConfig.schema_registry.node_ip
                 config.nginx.node_ip = developerConfig.nginx.node_ip
