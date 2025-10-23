@@ -26,8 +26,8 @@ node {
             booleanParam(name: 'RECON', defaultValue: false),
             booleanParam(name: 'JOBS', defaultValue: false),
             booleanParam(name: 'API', defaultValue: false),
-            booleanParam(name: 'NGINX', defaultValue: false),
-            booleanParam(name: 'SCHEMA_REGISTRY', defaultValue: false)
+            booleanParam(name: 'NGINX', defaultValue: false)
+            booleanParam(name: 'SCHEMA_REGISTRY', defaultValue: false),
         ])
     ])
 
@@ -38,7 +38,7 @@ node {
         }
 
         stage('Gather Source Files') {
-            echo "Fetching Releases and Config folders from private repo..."
+            echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
                 withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
@@ -53,8 +53,7 @@ node {
                         extensions: [
                             [$class: 'GitLFSPull'],
                             [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                                [path: 'Jenkins/deployment-pipeline/Releases/'],
-                                [path: 'odp-config/deployment/']
+                                [path: 'Jenkins/deployment-pipeline/Releases/']
                             ]]
                         ]
                     ])
@@ -63,13 +62,31 @@ node {
             }
 
             echo "Copying Releases folder to the workspace root..."
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
-            
-            echo "Copying config files to the Script directory..."
-            sh "cp temp_private_repo/odp-config/deployment/passwords.json deployment/Script/"
-            sh "cp temp_private_repo/odp-config/deployment/smtp_config.json deployment/Script/"
+            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
 
-            echo "Successfully loaded all source files."
+            echo "Successfully loaded Releases directory."
+        }
+
+        stage('Gather Developer Configs') {
+            echo "Fetching developer configuration files for environment: ${params.TARGET_ENV}"
+            
+            def devConfigRepoUrl = 'https://github.com/onex-saksham/ODP-configs.git'
+
+            dir('temp_config_repo') {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: devConfigRepoUrl]]
+                ])
+            }
+            
+            def devConfigPath = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}"
+
+            echo "Copying developer config files from ${devConfigPath}..."
+            sh "cp ${devConfigPath}/passwords.json deployment/Script/"
+            sh "cp ${devConfigPath}/smtp_config.json deployment/Script/"
+
+            echo "Successfully loaded developer configuration files."
         }
 
        stage('Prepare and Update Config') {
@@ -78,9 +95,9 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
+                // UPDATED PATH
                 def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
-                def developerConfigFile = 'temp_config_repo/initialization_deployment_config_developers.json'
-                
+                def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
                 echo "Reading master configuration from ${masterConfigFile}..."
                 def config = readJSON file: masterConfigFile
 
@@ -121,6 +138,7 @@ node {
                 config.schema_registry.
                 node_ip = developerConfig.schema_registry.node_ip
                 config.nginx.node_ip = developerConfig.nginx.node_ip
+                
                 echo "Finished applying developer overrides."
 
                 echo "Updating final configuration with build parameters..."
@@ -180,6 +198,7 @@ node {
             
             withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
                 try {
+                    // UPDATED PATH
                     dir('deployment/Script') {
                         sh '''
                             echo "Setting up temporary SSH key..."
