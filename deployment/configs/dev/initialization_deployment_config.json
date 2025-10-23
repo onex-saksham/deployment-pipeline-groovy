@@ -211,7 +211,9 @@
         "python_version": "3.12.0"
     },
     "backend_job": {
-        "node_ip": ["__backend_job_ip__"],
+        "node_ip": [
+            "__backend_job_ip__"
+        ],
         "ID_DESC_URL": "__ID_DESC_URL__",
         "ZIP_HOST_IP":"__ZIP_HOST_IP__",
         "ZIP_USERNAME":"__ZIP_USERNAME__",

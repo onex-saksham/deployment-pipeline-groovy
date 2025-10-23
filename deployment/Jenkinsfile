@@ -95,17 +95,17 @@ node {
                 echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                // echo "Extracting password data..."
-                // def passwordsData = developerConfig.passwords
-                // if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
-                // writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
-                // echo "Successfully created passwords.json"
+                echo "Extracting password data..."
+                def passwordsData = developerConfig.passwords
+                if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
+                writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
+                echo "Successfully created passwords.json"
 
-                // echo "Extracting SMTP data..."
-                // def smtpData = developerConfig.smtp
-                // if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
-                // writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
-                // echo "Successfully created smtp_config.json"
+                echo "Extracting SMTP data..."
+                def smtpData = developerConfig.smtp
+                if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
+                writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
+                echo "Successfully created smtp_config.json"
                 
                 echo "Reading master configuration from ${masterConfigFile}..."
                 def config = readJSON file: masterConfigFile
