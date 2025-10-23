@@ -15,7 +15,9 @@
         "recon": "__rc__",
         "jobs": "__jb__",
         "api": "__ap__",
-        "nginx": "__ng__"
+        "nginx": "__ng__",
+        "schema_registry":"__sr__"
+
     },
     "releases": {
         "new_version": "__new_version__",
@@ -89,6 +91,15 @@
         },
         "java_version": "17",
         "python_version": "3.12.0"
+    },
+    "schema_registry": {
+        "node_ip": [
+            "__schema_registry_ip__"
+        ],
+        "deployment_path": "",
+        "ports": {
+            "listener": 8081
+        }
     },
     "nifi": {
         "node_ip": [
@@ -201,19 +212,31 @@
     },
     "backend_job": {
         "node_ip": ["__backend_job_ip__"],
+        "ID_DESC_URL": "__ID_DESC_URL__",
+        "ZIP_HOST_IP":"__ZIP_HOST_IP__",
+        "ZIP_USERNAME":"__ZIP_USERNAME__",
+        "ZIP_SSH":"__ZIP_SSH__",
+        "IS_SCP_REQUIRED":"__IS_SCP_REQUIRED__",
+        "BACKEND_JOB_USER": "__backend_JOB_USER__",
         "deployment_path": "",
-        "nginx": [
+        "java_version": "17",
+        "python_version": "3.12.0"
+    },
+    "nginx": {
+        "node_ip": "__nginx_ip__",
+        "deployment_path": "",
+        "services": [
             "doris_fe",
             "api_sms",
-            "api_warcs"
+            "api_warcs",
+            "schema_registry"
         ],
         "ports": {
             "doris_fe": 1080,
             "api_sms": 1081,
-            "api_warcs": 1083
-        },
-        "java_version": "17",
-        "python_version": "3.12.0"
+            "api_warcs": 1082,
+            "schema_registry": 1083
+    }
     },
     "health_report": {
         "retry_count": 3,
