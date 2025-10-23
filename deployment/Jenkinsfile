@@ -26,8 +26,8 @@ node {
             booleanParam(name: 'RECON', defaultValue: false),
             booleanParam(name: 'JOBS', defaultValue: false),
             booleanParam(name: 'API', defaultValue: false),
-            booleanParam(name: 'NGINX', defaultValue: false)
-            booleanParam(name: 'SCHEMA_REGISTRY', defaultValue: false),
+            booleanParam(name: 'NGINX', defaultValue: false),
+            booleanParam(name: 'SCHEMA_REGISTRY', defaultValue: false)
         ])
     ])
 
