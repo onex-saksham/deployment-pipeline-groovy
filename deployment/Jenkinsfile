@@ -61,7 +61,7 @@ node {
             }
 
             echo "Copying Releases folder to the workspace root..."
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
+            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
 
             echo "Successfully loaded Releases directory."
         }
