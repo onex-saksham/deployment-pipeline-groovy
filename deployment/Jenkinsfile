@@ -68,7 +68,7 @@ node {
         }
 
         stage('Gather Developer Configs') {
-            echo "Fetching developer configuration files for environment: ${params.TARGET_ENV}"
+            echo "Fetching developer configuration repository..."
             
             def devConfigRepoUrl = 'https://github.com/onex-saksham/ODP-configs.git'
 
@@ -79,14 +79,8 @@ node {
                     userRemoteConfigs: [[url: devConfigRepoUrl]]
                 ])
             }
-            
-            def devConfigPath = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}"
 
-            echo "Copying developer config files from ${devConfigPath}..."
-            sh "cp ${devConfigPath}/passwords.json deployment/Script/"
-            sh "cp ${devConfigPath}/smtp_config.json deployment/Script/"
-
-            echo "Successfully loaded developer configuration files."
+            echo "Successfully checked out developer configuration repository."
         }
 
        stage('Prepare and Update Config') {
@@ -104,7 +98,17 @@ node {
                 echo "Reading developer override configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                echo "Applying hardcoded developer overrides to master configuration..."
+                echo "Extracting password data..."
+                def passwordsData = developerConfig.passwords
+                if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
+                writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
+                echo "Successfully created passwords.json"
+
+                echo "Extracting SMTP data..."
+                def smtpData = developerConfig.smtp
+                if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
+                writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
+                echo "Successfully created smtp_config.json"
 
                 config.base_user = developerConfig.base_user
                 config.user = developerConfig.user
@@ -135,6 +139,7 @@ node {
                 config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
                 config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
                 config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
+                
                 config.schema_registry.
                 node_ip = developerConfig.schema_registry.node_ip
                 config.nginx.node_ip = developerConfig.nginx.node_ip
