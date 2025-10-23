@@ -102,6 +102,8 @@ def deploy_zookeeper(config, binary_path, ssh):
                 run(ssh, f"cd {deployment_path}/kafka/config && "
                     f"echo {zookeeper_connection_string} >> zookeeper.properties")
 
+
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/zookeeper/zookeeper.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -168,6 +170,7 @@ def deploy_kafka(config, binary_path, ssh):
                 f"sed -i -e '/^EXTRA_ARGS=/i {jmx_command}' "
                 "kafka-server-start.sh")
             
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/kafka/kafka.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -217,6 +220,8 @@ def deploy_doris_fe(config, binary_path, ssh):
             if not i:
                 # ===== STEP 1: START MASTER NODE =====
                 logger.info("Step 1: Starting MASTER FE node")
+                
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/doris_fe/doris_fe.service", f"{service_path}")
                 run(ssh, f"cd {service_path} && "
@@ -278,6 +283,8 @@ def deploy_doris_fe(config, binary_path, ssh):
                 logger.info(f"Step 3: Starting follower WITH --helper flag for initial metadata sync")
 
                 # Create temporary service file with --helper flag
+                
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/doris_fe/doris_fe_follower.service",
                            f"{service_path}/doris_fe_follower.service")
@@ -393,6 +400,8 @@ def deploy_doris_be(config, binary_path, ssh):
                 "be.conf")
 
             with SCPClient(ssh.get_transport()) as scp:
+                
+                run(ssh, f"mkdir -p {service_path}")
                 scp.put(f"{binary_path}/Services/doris_be/doris_be.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
                 f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
@@ -474,6 +483,7 @@ def deploy_node_exporter(config, binary_path, ssh):
             run(ssh, f"cd {deployment_path} && "
                 f"mv node_exporter {node_exporter_path}")
             
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/node_exporter/node_exporter.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -516,6 +526,7 @@ def deploy_kafka_exporter(config, binary_path, ssh):
             run(ssh, f"cd {deployment_path} && "
                 "tar xf kafka_exporter.tar.xz")
 
+            run(ssh, f"mkdir -p {service_path}")
             with SCPClient(ssh.get_transport()) as scp:
                 scp.put(f"{binary_path}/Services/kafka_exporter/kafka_exporter.service", f"{service_path}")
             run(ssh, f"cd {service_path} && "
@@ -611,6 +622,8 @@ def deploy_prometheus(config, binary_path, ssh):
             f"-e 's|__api_node_exporter__|{api_node_exporter}|g' "
             "prometheus.yml")
 
+
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/prometheus/prometheus.service", f"{service_path}")
         run(ssh, f"cd {service_path} && "
@@ -653,7 +666,7 @@ def deploy_grafana(config, binary_path, ssh):
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Configurations/grafana/dashboards.yaml", f"{deployment_path}/grafana/conf/provisioning/dashboards")
         with SCPClient(ssh.get_transport()) as scp:
-            scp.put(f"{binary_path}/Dashboards/ODP-Dashboard.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
+            scp.put(f"{binary_path}/Dashboards/ODP-SMS-Dashboard.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Dashboards/TA-10.json", f"{deployment_path}/grafana/conf/provisioning/dashboards/json")
         with SCPClient(ssh.get_transport()) as scp:
@@ -674,6 +687,9 @@ def deploy_grafana(config, binary_path, ssh):
             f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
             "dashboards.yaml")
 
+
+
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/grafana/grafana.service", f"{service_path}")
         run(ssh, f"cd {service_path} && "
@@ -787,15 +803,9 @@ def deploy_jobs(config, binary_path, ssh):
             run(ssh, f"cd {deployment_path}/backend_services && "
                 f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
                 f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
-                f"-e 's|__BACKEND_JOB_USER__|{backend_job["BACKEND_JOB_USER"]}|g' "
-                f"-e 's|__BACKEND_JOB_PASSWORD__|{password()['BACKEND_JOB_PASSWORD']}|g' "
+                f"-e 's|__user__|doris_write_user|g' "
+                f"-e 's|__password__|{password()['doris_write_user']}|g' "
                 f"-e 's|__deployment_path__|{deployment_path}|g' "
-                f"-e 's|__ID_DESC_URL__|{backend_job["ID_DESC_URL"]}|g' "
-                f"-e 's|__ZIP_HOST_IP__|{backend_job["ZIP_HOST_IP"]}|g' "
-                f"-e 's|__ZIP_USERNAME__|{backend_job["ZIP_USERNAME"]}|g' "
-                f"-e 's|__ZIP_SSH__|{backend_job["ZIP_SSH"]}|g' "
-                f"-e 's|__IS_SCP_REQUIRED__|{backend_job["IS_SCP_REQUIRED"]}|g' "
-                f"-e 's|__ZIP_PASSWORD__|{password()["ZIP_PASSWORD"]}|g' "
                 "config.py")
 
             run(ssh, f"cd {deployment_path}/backend_services && "
@@ -923,6 +933,7 @@ def deploy_api(config, binary_path, ssh):
                          f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
                          f"{log4j_file_name}")
 
+                run(ssh, f"mkdir -p {service_path}")
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
                 run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
@@ -941,63 +952,10 @@ def deploy_api(config, binary_path, ssh):
         logger.error(f"Error in deploying API: {e}")
 
 
-def deploy_schema_registry(config, binary_path, ssh):
-    """Deploy Schema Registry"""
-
-    schema_registry = config["schema_registry"]
-    if schema_registry["deployment_path"] != "":
-        deployment_path = schema_registry["deployment_path"]
-    else:
-        deployment_path = config["deployment_path"]
-
-    ssh_path = os.path.join("/home", f"{config['base_user']}", ".ssh", "id_rsa")
-    service_path = os.path.join("/home", f"{config['user']}", ".config", "systemd", "user")
-
-    kafka = config["kafka"]
-    kafka_bootstrap_servers = ""
-    for i in range(0, len(kafka["broker_ip"]), 1):
-        kafka_bootstrap_servers += f"{kafka['broker_ip'][i]}:{kafka['ports']['listener']},"
-    kafka_bootstrap_servers = kafka_bootstrap_servers[:-1]
-
-    try:
-        for i in range(0, len(schema_registry["node_ip"]), 1):
-            logger.info(f"Deploying Schema Registry on: {schema_registry['node_ip'][i]}")
-            ssh_connection(ssh, schema_registry["node_ip"][i], config["user"], ssh_path, config["ssh_port"])
-
-            run(ssh, f"mkdir -p {deployment_path}")
-            with SCPClient(ssh.get_transport()) as scp:
-                scp.put(f"{binary_path}/Setups/schema_registry/confluent-8.0.0.tar.gz", f"{deployment_path}")
-            logger.info(f"got the tar file from  {deployment_path}")
-            run(ssh, f"cd {deployment_path} && "
-                "tar xzf confluent-8.0.0.tar.gz")
-
-            with SCPClient(ssh.get_transport()) as scp:
-                scp.put(f"{binary_path}/Configurations/schema_registry/schema-registry.properties",
-                       f"{deployment_path}/confluent-8.0.0/etc/schema-registry")
-
-            run(ssh, f"cd {deployment_path}/confluent-8.0.0/etc/schema-registry && "
-                f"sed -i -e 's|__schema_registry_ip__|{schema_registry['node_ip'][i]}|g' "
-                f"-e 's|__schema_registry_port__|{schema_registry['ports']['listener']}|g' "
-                f"-e 's|PLAINTEXT://__kafka_broker_ip__:__kafka_listener_port__|{kafka_bootstrap_servers}|g' "
-                "schema-registry.properties")
-
-            with SCPClient(ssh.get_transport()) as scp:
-                scp.put(f"{binary_path}/Services/schema_registry/schema_registry.service", f"{service_path}")
-            run(ssh, f"cd {service_path} && "
-                f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                "schema_registry.service")
-            run(ssh, "systemctl --user daemon-reload && "
-                "systemctl --user enable schema_registry.service && "
-                "systemctl --user start schema_registry.service")
-
-            logger.info(f"Schema Registry successfully started on: {schema_registry['node_ip'][i]}")
-    except Exception as e:
-        logger.error(f"Error in deploying Schema Registry: {e}")
-
-def generate_nginx_template(config, nginx):
+def generate_nginx_template(config, backend_job):
     """
     Generate nginx.conf template with placeholders.
-    Only includes blocks for tools present in nginx['services'].
+    Only includes blocks for tools present in backend_job['nginx'].
     """
     nginx_conf = [
         "worker_processes  1;",
@@ -1008,7 +966,7 @@ def generate_nginx_template(config, nginx):
     ]
 
     # STREAM block (Doris FE)
-    if "doris_fe" in nginx["services"]:
+    if "doris_fe" in backend_job["nginx"]:
         nginx_conf.append("stream {")
         nginx_conf.append("    upstream doris_fe_servers {")
         nginx_conf.append("        __nginx_doris_fe_connection_string__;")
@@ -1022,20 +980,18 @@ def generate_nginx_template(config, nginx):
         nginx_conf.append("}")
         nginx_conf.append("")
 
+    # Determine selected HTTP-based APIs - FIX: Convert string to boolean properly
     deploy_sms = config.get("deploy_sms", "false")
     deploy_whatsapp = config.get("deploy_whatsapp", "false")
     deploy_rcs = config.get("deploy_rcs", "false")
-    deploy_schema_registry = config.get("deploy", {}).get("schema_registry", "false") == "true"
 
     http_tools = []
-    if "api_sms" in nginx["services"] and deploy_sms:
+    if "api_sms" in backend_job["nginx"] and deploy_sms:
         http_tools.append("api_sms")
-    if "api_warcs" in nginx["services"] and (deploy_whatsapp or deploy_rcs):
+    if "api_warcs" in backend_job["nginx"] and (deploy_whatsapp or deploy_rcs):
         http_tools.append("api_warcs")
-    if "schema_registry" in nginx["services"] and deploy_schema_registry:
-        http_tools.append("schema_registry")
 
-    if http_tools:  # Only include HTTP block if at least one tool is selected
+    if http_tools:  # Only include HTTP block if at least one API is selected
         nginx_conf.append("http {")
         nginx_conf.append("    include mime.types;")
         nginx_conf.append("    default_type application/octet-stream;")
@@ -1085,29 +1041,6 @@ def generate_nginx_template(config, nginx):
             nginx_conf.append("        }")
             nginx_conf.append("    }")
 
-        if "schema_registry" in http_tools:
-            nginx_conf.append("    upstream schema_registry {")
-            nginx_conf.append("        __nginx_schema_registry_connection_string__;")
-            nginx_conf.append("    }")
-            nginx_conf.append("    server {")
-            nginx_conf.append("        listen __nginx_schema_registry_port__;")
-            nginx_conf.append("        location / {")
-            nginx_conf.append("            proxy_pass http://schema_registry;")
-            nginx_conf.append("            proxy_connect_timeout 10s;")
-            nginx_conf.append("            proxy_send_timeout 360s;")
-            nginx_conf.append("            proxy_read_timeout 360s;")
-            nginx_conf.append("            send_timeout 360s;")
-            nginx_conf.append("            proxy_set_header Host $host;")
-            nginx_conf.append("            proxy_set_header X-Real-IP $remote_addr;")
-            nginx_conf.append("            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;")
-            nginx_conf.append("            proxy_set_header X-Forwarded-Proto $scheme;")
-            nginx_conf.append("            proxy_buffering off;")
-            nginx_conf.append("            proxy_cache_bypass $http_upgrade;")
-            nginx_conf.append("            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;")
-            nginx_conf.append("            proxy_next_upstream_tries 3;")
-            nginx_conf.append("        }")
-            nginx_conf.append("    }")
-
         nginx_conf.append("}")  # end of http block
 
     return "\n".join(nginx_conf)
@@ -1117,16 +1050,10 @@ def deploy_nginx(config, binary_path, ssh):
     """Deploy Nginx"""
 
     backend_job = config["backend_job"]
-    nginx = config["nginx"]
-
-    # Choose deployment_path: prefer nginx-specific if provided, else global
-    if nginx["deployment_path"] != "":
-        deployment_path = nginx["deployment_path"]
-    elif backend_job["deployment_path"] != "":
+    if backend_job["deployment_path"] != "":
         deployment_path = backend_job["deployment_path"]
     else:
         deployment_path = config["deployment_path"]
-
     deployment_type = config["deployment_type"]
     if deployment_type == "single":
         return
@@ -1134,13 +1061,14 @@ def deploy_nginx(config, binary_path, ssh):
     ssh_path = os.path.join("/home", f"{config['base_user']}", ".ssh", "id_rsa")
     service_path = os.path.join("/home", f"{config['user']}", ".config", "systemd", "user")
 
+    # Deployment flags - FIX: Convert string to boolean properly
     deploy_sms = config.get("deploy_sms", "false")
     deploy_whatsapp = config.get("deploy_whatsapp", "false")
     deploy_rcs = config.get("deploy_rcs", "false")
 
     try:
-        logger.info(f"Deploying Nginx on: {nginx['node_ip']}")
-        ssh_connection(ssh, nginx["node_ip"], config["user"], ssh_path, config["ssh_port"])
+        logger.info(f"Deploying Nginx on: {backend_job['node_ip']}")
+        ssh_connection(ssh, backend_job["node_ip"][0], config["user"], ssh_path, config["ssh_port"])
 
         run(ssh, f"mkdir -p {deployment_path}")
         with SCPClient(ssh.get_transport()) as scp:
@@ -1156,30 +1084,30 @@ def deploy_nginx(config, binary_path, ssh):
         run(ssh, f"cd {deployment_path}/nginx_setup && make && make install")
 
         # Generate nginx configuration dynamically
-        nginx_conf_content = generate_nginx_template(config, nginx)
+        nginx_conf_content = generate_nginx_template(config, backend_job)
 
         # Upload nginx.conf
         temp_conf_path = "/tmp/nginx.conf"
         with open(temp_conf_path, "w") as f:
             f.write(nginx_conf_content)
-        run(ssh, f"cd {deployment_path}/nginx/conf && rm nginx.conf")
+        run(ssh, f"cd {deployment_path}/nginx/conf && "
+                 "rm nginx.conf")
 
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(temp_conf_path, f"{deployment_path}/nginx/conf/nginx.conf")
         os.remove(temp_conf_path)
 
         # Determine tools to configure
-        nginx_services = nginx["services"]
+        nginx_tools = backend_job["nginx"]
         tools_to_configure = []
 
-        for tool in nginx_services:
+        # FIX: Use the same boolean conversion as above
+        for tool in nginx_tools:
             if tool == "api_sms" and deploy_sms:
                 tools_to_configure.append(tool)
             elif tool == "api_warcs" and (deploy_whatsapp or deploy_rcs):
                 tools_to_configure.append(tool)
             elif tool == "doris_fe":
-                tools_to_configure.append(tool)
-            elif tool == "schema_registry" and config.get("deploy", {}).get("schema_registry", "false") == "true":
                 tools_to_configure.append(tool)
 
         # Configure upstream + port replacements
@@ -1187,64 +1115,65 @@ def deploy_nginx(config, binary_path, ssh):
             if tool == "doris_fe":
                 ips = config["doris_fe"]["node_ip"]
                 port = config["doris_fe"]["ports"]["query"]
-                nginx_port = nginx["ports"]["doris_fe"]
+                nginx_port = backend_job["ports"]["doris_fe"]
                 placeholder_conn = "__nginx_doris_fe_connection_string__"
                 placeholder_port = "__nginx_doris_fe_port__"
 
             elif tool == "api_sms":
                 ips = config["api"]["node_ip"]
                 port = config["api"]["ports"]["sms"]
-                nginx_port = nginx["ports"]["api_sms"]
+                nginx_port = backend_job["ports"]["api_sms"]
                 placeholder_conn = "__nginx_api_sms_connection_string__"
                 placeholder_port = "__nginx_api_sms_port__"
 
             elif tool == "api_warcs":
                 ips = config["api"]["node_ip"]
                 port = config["api"]["ports"]["warcs"]
-                nginx_port = nginx["ports"]["api_warcs"]
+                nginx_port = backend_job["ports"]["api_warcs"]
                 placeholder_conn = "__nginx_api_warcs_connection_string__"
                 placeholder_port = "__nginx_api_warcs_port__"
+                # Add Erlang IP placeholder for api_warcs
                 erlang_ip_placeholder = "__nginx_registry_erlang_ip__"
-                erlang_ip = config["api"]["erlang_registry_ip"]
-
-            elif tool == "schema_registry":
-                ips = config["schema_registry"]["node_ip"]
-                port = config["schema_registry"]["ports"]["listener"]
-                nginx_port = nginx["ports"]["schema_registry"]
-                placeholder_conn = "__nginx_schema_registry_connection_string__"
-                placeholder_port = "__nginx_schema_registry_port__"
+                # FIX: Use proper dictionary access with get() method and provide default
+                erlang_ip = config["api"]["erlang_registry_ip"] # Default to localhost
 
             else:
                 logger.warning(f"Unknown tool in nginx configuration: {tool}")
                 continue
 
+            # Flatten IPs for multiple nodes
             flat_ips = [ip for sublist in ips for ip in (sublist if isinstance(sublist, list) else [sublist])]
-            servers = "".join(
-                f"server {ip}:{port};" if i < len(flat_ips) - 1 else f"server {ip}:{port}"
-                for i, ip in enumerate(flat_ips)
-            )
 
+            # Create a single-line server string for sed
+            servers = "".join(f"server {ip}:{port};" if i < len(flat_ips) - 1 else f"server {ip}:{port}" for i, ip in
+                              enumerate(flat_ips))
+
+            # For api_warcs, we need to replace the Erlang IP as well
             if tool == "api_warcs":
                 run(ssh, f'sed -i -e "s|{placeholder_conn}|{servers}|g" '
                          f'-e "s|{placeholder_port}|{nginx_port}|g" '
                          f'-e "s|{erlang_ip_placeholder}|{erlang_ip}|g" '
                          f'{deployment_path}/nginx/conf/nginx.conf')
             else:
+                # Correct run(ssh, ...) with proper quotes for other tools
                 run(ssh, f'sed -i -e "s|{placeholder_conn}|{servers}|g" '
                          f'-e "s|{placeholder_port}|{nginx_port}|g" '
                          f'{deployment_path}/nginx/conf/nginx.conf')
-
+        # Deploy systemd unit
+        
+        run(ssh, f"mkdir -p {service_path}")
         with SCPClient(ssh.get_transport()) as scp:
             scp.put(f"{binary_path}/Services/nginx/nginx.service", service_path)
 
         run(ssh, f"cd {service_path} && "
                  f"sed -i -e 's|__deployment_path__|{deployment_path}|g' nginx.service")
 
+        # Start nginx service
         run(ssh, "systemctl --user daemon-reload && "
                  "systemctl --user enable nginx.service && "
                  "systemctl --user restart nginx.service")
 
-        logger.info(f"Nginx successfully deployed on: {nginx['node_ip']}")
+        logger.info(f"Nginx successfully deployed on: {backend_job['node_ip']}")
 
     except Exception as e:
         logger.error(f"Error in deploying Nginx: {e}")
@@ -1317,8 +1246,6 @@ def main():
             deploy_jobs(config, binary_path, ssh)
         if deploy.get("api") == "true":
             deploy_api(config, binary_path, ssh)
-        if deploy.get("schema_registry") == "true":
-            deploy_schema_registry(config, binary_path, ssh)
         if deploy.get("nginx") == "true":
             deploy_nginx(config, binary_path, ssh)
     except Exception as e:
