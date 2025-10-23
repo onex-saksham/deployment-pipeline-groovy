@@ -37,7 +37,7 @@ node {
         }
 
         stage('Gather Source Files') {
-            echo "Fetching Releases and Config folders from private repo..."
+            echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
                 withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
@@ -52,8 +52,7 @@ node {
                         extensions: [
                             [$class: 'GitLFSPull'],
                             [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                                [path: 'Jenkins/deployment-pipeline/Releases/'],
-                                [path: 'odp-config/deployment/']
+                                [path: 'Jenkins/deployment-pipeline/Releases/']
                             ]]
                         ]
                     ])
@@ -63,12 +62,28 @@ node {
 
             echo "Copying Releases folder to the workspace root..."
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./"
-            
-            echo "Copying config files to the Script directory..."
-            sh "cp temp_private_repo/odp-config/deployment/passwords.json deployment/Script/"
-            sh "cp temp_private_repo/odp-config/deployment/smtp_config.json deployment/Script/"
 
-            echo "Successfully loaded all source files."
+            echo "Successfully loaded Releases directory."
+        }
+
+        stage('Gather Developer Configs') {
+            echo "Fetching developer configuration files..."
+            
+            def devConfigRepoUrl = 'https://github.com/onex-saksham/ODP-configs.git'
+
+            dir('temp_config_repo') {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: devConfigRepoUrl]]
+                ])
+            }
+
+            echo "Copying developer config files to the Script directory..."
+            sh "cp temp_config_repo/passwords.json deployment/Script/"
+            sh "cp temp_config_repo/smtp_config.json deployment/Script/"
+
+            echo "Successfully loaded developer configuration files."
         }
 
        stage('Prepare and Update Config') {
