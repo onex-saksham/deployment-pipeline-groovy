@@ -95,31 +95,26 @@ node {
                 echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
-                echo "Extracting password data..."
-                def passwordsData = developerConfig.passwords
-                if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
-                writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
-                echo "Successfully created passwords.json"
+                // echo "Extracting password data..."
+                // def passwordsData = developerConfig.passwords
+                // if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
+                // writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
+                // echo "Successfully created passwords.json"
 
-                echo "Extracting SMTP data..."
-                def smtpData = developerConfig.smtp
-                if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
-                writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
-                echo "Successfully created smtp_config.json"
+                // echo "Extracting SMTP data..."
+                // def smtpData = developerConfig.smtp
+                // if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
+                // writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
+                // echo "Successfully created smtp_config.json"
                 
-                // The rest of the logic starts here
                 echo "Reading master configuration from ${masterConfigFile}..."
                 def config = readJSON file: masterConfigFile
-
-                echo "Applying hardcoded developer overrides to master configuration..."
 
                 config.base_user = developerConfig.base_user
                 config.user = developerConfig.user
                 config.deployment_type = developerConfig.deployment_type
                 config.deployment_path = developerConfig.deployment_path
                 config.ssh_port = developerConfig.ssh_port
-                
-                // --- CORRECTED: Added safety checks for all components ---
 
                 if (!config.zookeeper) { config.zookeeper = [:] }
                 config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
@@ -163,7 +158,8 @@ node {
                 config.nginx.node_ip = developerConfig.nginx.node_ip
                 
                 echo "Finished applying developer overrides."
-
+                
+                // --- The rest of your stage remains the same ---
                 echo "Updating final configuration with build parameters..."
                 
                 if (!config.releases) { config.releases = [:] }
@@ -176,7 +172,7 @@ node {
                 config.deploy_whatsapp = params.Whatsapp.toString()
 
                 def services = [
-                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORis_FE', 'DORIS_BE', 
+                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
                     'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
                     'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX', 'SCHEMA_REGISTRY'
                 ]
