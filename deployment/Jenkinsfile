@@ -89,13 +89,10 @@ node {
             echo "Successfully loaded master configuration file."
 
             script {
-                // UPDATED PATH
                 def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
                 def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
-                echo "Reading master configuration from ${masterConfigFile}..."
-                def config = readJSON file: masterConfigFile
-
-                echo "Reading developer override configuration from ${developerConfigFile}..."
+                
+                echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
                 echo "Extracting password data..."
@@ -109,22 +106,41 @@ node {
                 if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
                 writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
                 echo "Successfully created smtp_config.json"
+                
+                // The rest of the logic starts here
+                echo "Reading master configuration from ${masterConfigFile}..."
+                def config = readJSON file: masterConfigFile
+
+                echo "Applying hardcoded developer overrides to master configuration..."
 
                 config.base_user = developerConfig.base_user
                 config.user = developerConfig.user
                 config.deployment_type = developerConfig.deployment_type
                 config.deployment_path = developerConfig.deployment_path
                 config.ssh_port = developerConfig.ssh_port
+                
+                // --- CORRECTED: Added safety checks for all components ---
 
+                if (!config.zookeeper) { config.zookeeper = [:] }
                 config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
+                
+                if (!config.kafka) { config.kafka = [:] }
                 config.kafka.broker_ip = developerConfig.kafka.broker_ip
+                
+                if (!config.nifi) { config.nifi = [:] }
                 config.nifi.node_ip = developerConfig.nifi.node_ip
+                
+                if (!config.doris_fe) { config.doris_fe = [:] }
                 config.doris_fe.node_ip = developerConfig.doris_fe.node_ip
+
+                if (!config.doris_be) { config.doris_be = [:] }
                 config.doris_be.node_ip = developerConfig.doris_be.node_ip
                 
+                if (!config.monitoring) { config.monitoring = [:] }
                 config.monitoring.node_ip = developerConfig.monitoring.node_ip
                 config.monitoring.smtp = developerConfig.monitoring.smtp
 
+                if (!config.api) { config.api = [:] }
                 config.api.node_ip = developerConfig.api.node_ip
                 config.api.deployment_version = developerConfig.api.deployment_version
                 config.api.remote_jobs = developerConfig.api.remote_jobs
@@ -140,8 +156,10 @@ node {
                 config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
                 config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
                 
-                config.schema_registry.
-                node_ip = developerConfig.schema_registry.node_ip
+                if (!config.schema_registry) { config.schema_registry = [:] }
+                config.schema_registry.node_ip = developerConfig.schema_registry.node_ip
+                
+                if (!config.nginx) { config.nginx = [:] }
                 config.nginx.node_ip = developerConfig.nginx.node_ip
                 
                 echo "Finished applying developer overrides."
@@ -158,7 +176,7 @@ node {
                 config.deploy_whatsapp = params.Whatsapp.toString()
 
                 def services = [
-                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
+                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORis_FE', 'DORIS_BE', 
                     'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
                     'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX', 'SCHEMA_REGISTRY'
                 ]
