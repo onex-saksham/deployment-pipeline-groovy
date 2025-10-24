@@ -1,16 +1,19 @@
 node {
+    // Define the parameters that will be presented to the user in the Jenkins UI
+    // when they click "Build with Parameters".
     properties([
         parameters([
             booleanParam(name: 'SMS', defaultValue: false),
             booleanParam(name: 'RCS', defaultValue: false),
             booleanParam(name: 'Whatsapp', defaultValue: false),
 
+            // == Environment and Version Selection ==
             choice(name: 'TARGET_ENV', choices: ['Dev', 'Single', 'QA', 'Prod', 'SBI Prod', 'SMPP DR', 'Functional Lab'], description: 'Select the target environment for deployment.'),
-
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
-            booleanParam(name: 'Select_All', defaultValue: false, description: 'Select this to deploy all application services (Zookeeper to Nginx).'),
 
+            // == Service Selection Toggles ==
+            booleanParam(name: 'Select_All', defaultValue: false, description: 'Select this to deploy all application services (Zookeeper to Nginx).'),
             booleanParam(name: 'ZOOKEEPER', defaultValue: false),
             booleanParam(name: 'KAFKA', defaultValue: false),
             booleanParam(name: 'NIFI', defaultValue: false),
@@ -32,17 +35,22 @@ node {
     ])
 
     try {
+        // Stage 1: Check out the primary source code (the repo containing this Jenkinsfile).
         stage('Initialization') {
             echo "Pipeline started for environment: ${params.TARGET_ENV}"
             checkout scm
         }
 
+        // Stage 2: Fetch large binary files ('Releases') from a separate private repository.
+        // This uses Git LFS (Large File Storage).
         stage('Gather Source Files') {
             echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
                 withCredentials([usernamePassword(credentialsId: 'private-github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
+
+                    // Perform a "sparse checkout" to only download the 'Releases' directory.
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: '*/main']],
@@ -57,16 +65,19 @@ node {
                             ]]
                         ]
                     ])
+                    // Clean up the temporary LFS authentication configuration for security.
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                 }
             }
 
+            // Copy the downloaded 'Releases' folder into the correct 'deployment' directory.
             echo "Copying Releases folder to the workspace root..."
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
 
             echo "Successfully loaded Releases directory."
         }
 
+        // Stage 3: Fetch the developer-specific configuration files from another repository.
         stage('Gather Developer Configs') {
             echo "Fetching developer configuration repository..."
             
@@ -83,30 +94,39 @@ node {
             echo "Successfully checked out developer configuration repository."
         }
 
+        // Stage 4: Merge all configurations into a single, final JSON file.
        stage('Prepare and Update Config') {
+            // Copy the master template for the selected environment into the 'Script' directory.
             echo "Copying master config file for ${params.TARGET_ENV} into the Script/ directory..."
             sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json deployment/Script/"
             echo "Successfully loaded master configuration file."
 
             script {
                 def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
+                // Build the path to the correct developer config file based on the selected environment.
                 def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
                 
                 echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                 def developerConfig = readJSON file: developerConfigFile
 
+                // --- DYNAMIC FILE CREATION ---
+                // Extract the 'passwords' object from the developer config and create a separate passwords.json file.
                 echo "Extracting password data..."
                 def passwordsData = developerConfig.passwords
                 if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
                 writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
                 echo "Successfully created passwords.json"
 
+
+                // Extract the 'smtp' object and create a separate smtp_config.json file.
                 echo "Extracting SMTP data..."
                 def smtpData = developerConfig.smtp
                 if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
                 writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
                 echo "Successfully created smtp_config.json"
                 
+                // --- MERGE LOGIC ---
+                // Read the master template file that was copied earlier.
                 echo "Reading master configuration from ${masterConfigFile}..."
                 def config = readJSON file: masterConfigFile
 
@@ -159,7 +179,6 @@ node {
                 
                 echo "Finished applying developer overrides."
                 
-                // --- The rest of your stage remains the same ---
                 echo "Updating final configuration with build parameters..."
                 
                 if (!config.releases) { config.releases = [:] }
@@ -199,6 +218,8 @@ node {
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
             
+            sh 'cat deployment/Script/passwords.json'
+            sh 'cat deployment/Script/smtp_config.json'
             sh 'cat deployment/Script/initialization_deployment_config.json'
             
             input(
