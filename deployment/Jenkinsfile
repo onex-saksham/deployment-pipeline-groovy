@@ -46,18 +46,13 @@ node {
         stage('Gather Source Files') {
             echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
-                withVault(
-                    configuration: [
-                        url: 'http://127.0.0.1:8200', // Your Vault server URL
-                        credentialsId: 'vault-approle-credential'
-                    ],
-                    secrets: [
-                        [path: 'secret/data/jenkins/github', engineVersion: 2, secretValues: [
-                            [envVar: 'GITHUB_USER', vaultKey: 'username'],
-                            [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
-                        ]]
-                    ]
-                ){
+                withVault(vaultSecrets: [
+                    [path: 'secret/data/jenkins/github', engineVersion: 2, secretValues: [
+                        [envVar: 'GITHUB_USER', vaultKey: 'username'],
+                        [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
+                    ]]
+                ], vaultCredentialId: 'vault-approle-credential')
+                {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
                     // Perform a "sparse checkout" to only download the 'Releases' directory.
@@ -111,17 +106,13 @@ node {
             sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json deployment/Script/"
             echo "Successfully loaded master configuration file."
 
-            withVault(
-                configuration: [
-                    url: 'http://127.0.0.1:8200',
-                    credentialsId: 'vault-approle-credential'
-                ],
-                secrets: [
-                    [path: 'secret/data/jenkins/smtp', engineVersion: 2, secretValues: [
-                        [envVar: 'SMTP_PASSWORD', vaultKey: 'password']
-                    ]]
-                ]
-            ){      script {
+            withVault(vaultSecrets: [
+                [path: 'secret/data/jenkins/smtp', engineVersion: 2, secretValues: [
+                    [envVar: 'SMTP_PASSWORD', vaultKey: 'password']
+                ]]
+            ], vaultCredentialId: 'vault-approle-credential')
+                {      
+                    script {
                     def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
                     // Build the path to the correct developer config file based on the selected environment.
                     def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
@@ -286,17 +277,12 @@ ${initContent}
         stage('Deployment Execution') {
             echo "Preparing SSH key and Python environment..."
             
-            withVault(
-                configuration: [
-                    url: 'http://127.0.0.1:8200',
-                    credentialsId: 'vault-approle-credential'
-                ],
-                secrets: [
-                    [path: 'secret/data/jenkins/ssh-key', engineVersion: 2, secretValues: [
-                        [envVar: 'SSH_KEY_CONTENT', vaultKey: 'key']
-                    ]]
-                ]
-            ) {
+            withVault(vaultSecrets: [
+                [path: 'secret/data/jenkins/ssh-key', engineVersion: 2, secretValues: [
+                    [envVar: 'SSH_KEY_CONTENT', vaultKey: 'key']
+                ]]
+            ], vaultCredentialId: 'vault-approle-credential')
+            {
                 try {
                     // Change the current directory to where the Python script is.
                     dir('deployment/Script') {
