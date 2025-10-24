@@ -101,120 +101,123 @@ node {
             sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json deployment/Script/"
             echo "Successfully loaded master configuration file."
 
-            script {
-                def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
-                // Build the path to the correct developer config file based on the selected environment.
-                def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
-                
-                echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
-                def developerConfig = readJSON file: developerConfigFile
-
-                // --- DYNAMIC FILE CREATION ---
-                // Extract the 'passwords' object from the developer config and create a separate passwords.json file.
-                echo "Extracting password data..."
-                def passwordsData = developerConfig.passwords
-                if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
-                writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
-                echo "Successfully created passwords.json"
-
-
-                // Extract the 'smtp' object and create a separate smtp_config.json file.
-                echo "Extracting SMTP data..."
-                def smtpData = developerConfig.smtp
-                if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
-                writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
-                echo "Successfully created smtp_config.json"
-                
-                // --- MERGE LOGIC ---
-                // Read the master template file that was copied earlier.
-                echo "Reading master configuration from ${masterConfigFile}..."
-                def config = readJSON file: masterConfigFile
-
-                config.base_user = developerConfig.base_user
-                config.user = developerConfig.user
-                config.deployment_type = developerConfig.deployment_type
-                config.deployment_path = developerConfig.deployment_path
-                config.ssh_port = developerConfig.ssh_port
-
-                if (!config.zookeeper) { config.zookeeper = [:] }
-                config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
-                
-                if (!config.kafka) { config.kafka = [:] }
-                config.kafka.broker_ip = developerConfig.kafka.broker_ip
-                
-                if (!config.nifi) { config.nifi = [:] }
-                config.nifi.node_ip = developerConfig.nifi.node_ip
-                
-                if (!config.doris_fe) { config.doris_fe = [:] }
-                config.doris_fe.node_ip = developerConfig.doris_fe.node_ip
-
-                if (!config.doris_be) { config.doris_be = [:] }
-                config.doris_be.node_ip = developerConfig.doris_be.node_ip
-                
-                if (!config.monitoring) { config.monitoring = [:] }
-                config.monitoring.node_ip = developerConfig.monitoring.node_ip
-                config.monitoring.smtp = developerConfig.monitoring.smtp
-
-                if (!config.api) { config.api = [:] }
-                config.api.node_ip = developerConfig.api.node_ip
-                config.api.deployment_version = developerConfig.api.deployment_version
-                config.api.remote_jobs = developerConfig.api.remote_jobs
-                config.api.use_nginx = developerConfig.api.use_nginx
-                config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
-
-                if (!config.backend_job) { config.backend_job = [:] }
-                config.backend_job.node_ip = developerConfig.backend_job.node_ip
-                config.backend_job.ID_DESC_URL = developerConfig.backend_job.ID_DESC_URL
-                config.backend_job.ZIP_HOST_IP = developerConfig.backend_job.ZIP_HOST_IP
-                config.backend_job.ZIP_USERNAME = developerConfig.backend_job.ZIP_USERNAME
-                config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
-                config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
-                config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
-                
-                if (!config.schema_registry) { config.schema_registry = [:] }
-                config.schema_registry.node_ip = developerConfig.schema_registry.node_ip
-                
-                if (!config.nginx) { config.nginx = [:] }
-                config.nginx.node_ip = developerConfig.nginx.node_ip
-                
-                echo "Finished applying developer overrides."
-
-                // --- APPLY BUILD PARAMETERS ---
-                // Override the configuration with values selected in the Jenkins UI.
-                echo "Updating final configuration with build parameters..."
-                
-                if (!config.releases) { config.releases = [:] }
-                if (!config.deploy) { config.deploy = [:] }
-                
-                config.releases.new_version = params.DEPLOY_VERSION                
-                config.deploy_sms = params.SMS.toString()
-                config.deploy_rcs = params.RCS.toString()
-                config.deploy_whatsapp = params.Whatsapp.toString()
-
-                // Create a list of all services to loop through.
-                def services = [
-                    'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
-                    'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
-                    'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX', 'SCHEMA_REGISTRY'
-                ]
-                
-                if (params.Select_All) {
-                    echo "Select_All is selected. Overriding individual service selections."
-                }
-
-                // Sets deploy values in true or false
-                services.each { serviceName ->
-                    def jsonKey = serviceName.toLowerCase().replace(' ', '_')
-                    def paramValue = params.Select_All ? true : params[serviceName]
+            withCredentials([string(credentialsId: 'smtp-sender-password', variable: 'SMTP_PASSWORD')]) {
+                script {
+                    def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
+                    // Build the path to the correct developer config file based on the selected environment.
+                    def developerConfigFile = "temp_config_repo/deployment/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config_developers.json"                
                     
-                    echo " - Setting service '${jsonKey}' to '${paramValue}'"
-                    config.deploy[jsonKey] = paramValue.toString()
+                    echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
+                    def developerConfig = readJSON file: developerConfigFile
+
+                    // --- DYNAMIC FILE CREATION ---
+                    // Extract the 'passwords' object from the developer config and create a separate passwords.json file.
+                    echo "Extracting password data..."
+                    def passwordsData = developerConfig.passwords
+                    if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
+                    writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
+                    echo "Successfully created passwords.json"
+
+
+                    // Extract the 'smtp' object and create a separate smtp_config.json file.
+                    echo "Extracting SMTP data..."
+                    def smtpData = developerConfig.smtp
+                    if (!smtpData) { error("Developer config is missing the 'smtp' object.") }
+                    smtpData.sender_password = SMTP_PASSWORD
+                    writeJSON file: 'deployment/Script/smtp_config.json', json: smtpData, pretty: 4
+                    echo "Successfully created smtp_config.json"
+                    
+                    // --- MERGE LOGIC ---
+                    // Read the master template file that was copied earlier.
+                    echo "Reading master configuration from ${masterConfigFile}..."
+                    def config = readJSON file: masterConfigFile
+
+                    config.base_user = developerConfig.base_user
+                    config.user = developerConfig.user
+                    config.deployment_type = developerConfig.deployment_type
+                    config.deployment_path = developerConfig.deployment_path
+                    config.ssh_port = developerConfig.ssh_port
+
+                    if (!config.zookeeper) { config.zookeeper = [:] }
+                    config.zookeeper.node_ip = developerConfig.zookeeper.node_ip
+                    
+                    if (!config.kafka) { config.kafka = [:] }
+                    config.kafka.broker_ip = developerConfig.kafka.broker_ip
+                    
+                    if (!config.nifi) { config.nifi = [:] }
+                    config.nifi.node_ip = developerConfig.nifi.node_ip
+                    
+                    if (!config.doris_fe) { config.doris_fe = [:] }
+                    config.doris_fe.node_ip = developerConfig.doris_fe.node_ip
+
+                    if (!config.doris_be) { config.doris_be = [:] }
+                    config.doris_be.node_ip = developerConfig.doris_be.node_ip
+                    
+                    if (!config.monitoring) { config.monitoring = [:] }
+                    config.monitoring.node_ip = developerConfig.monitoring.node_ip
+                    config.monitoring.smtp = developerConfig.monitoring.smtp
+
+                    if (!config.api) { config.api = [:] }
+                    config.api.node_ip = developerConfig.api.node_ip
+                    config.api.deployment_version = developerConfig.api.deployment_version
+                    config.api.remote_jobs = developerConfig.api.remote_jobs
+                    config.api.use_nginx = developerConfig.api.use_nginx
+                    config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
+
+                    if (!config.backend_job) { config.backend_job = [:] }
+                    config.backend_job.node_ip = developerConfig.backend_job.node_ip
+                    config.backend_job.ID_DESC_URL = developerConfig.backend_job.ID_DESC_URL
+                    config.backend_job.ZIP_HOST_IP = developerConfig.backend_job.ZIP_HOST_IP
+                    config.backend_job.ZIP_USERNAME = developerConfig.backend_job.ZIP_USERNAME
+                    config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
+                    config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
+                    config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
+                    
+                    if (!config.schema_registry) { config.schema_registry = [:] }
+                    config.schema_registry.node_ip = developerConfig.schema_registry.node_ip
+                    
+                    if (!config.nginx) { config.nginx = [:] }
+                    config.nginx.node_ip = developerConfig.nginx.node_ip
+                    
+                    echo "Finished applying developer overrides."
+
+                    // --- APPLY BUILD PARAMETERS ---
+                    // Override the configuration with values selected in the Jenkins UI.
+                    echo "Updating final configuration with build parameters..."
+                    
+                    if (!config.releases) { config.releases = [:] }
+                    if (!config.deploy) { config.deploy = [:] }
+                    
+                    config.releases.new_version = params.DEPLOY_VERSION                
+                    config.deploy_sms = params.SMS.toString()
+                    config.deploy_rcs = params.RCS.toString()
+                    config.deploy_whatsapp = params.Whatsapp.toString()
+
+                    // Create a list of all services to loop through.
+                    def services = [
+                        'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
+                        'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
+                        'GRAFANA','HEALTH_REPORTS', 'RECON', 'JOBS', 'API', 'NGINX', 'SCHEMA_REGISTRY'
+                    ]
+                    
+                    if (params.Select_All) {
+                        echo "Select_All is selected. Overriding individual service selections."
+                    }
+
+                    // Sets deploy values in true or false
+                    services.each { serviceName ->
+                        def jsonKey = serviceName.toLowerCase().replace(' ', '_')
+                        def paramValue = params.Select_All ? true : params[serviceName]
+                        
+                        echo " - Setting service '${jsonKey}' to '${paramValue}'"
+                        config.deploy[jsonKey] = paramValue.toString()
+                    }
+                    
+                    echo "Writing final updated configuration back to ${masterConfigFile}..."
+                    writeJSON file: masterConfigFile, json: config, pretty: 4
+                    
+                    echo "Successfully updated initialization_deployment_config.json."
                 }
-                
-                echo "Writing final updated configuration back to ${masterConfigFile}..."
-                writeJSON file: masterConfigFile, json: config, pretty: 4
-                
-                echo "Successfully updated initialization_deployment_config.json."
             }
         }
 
