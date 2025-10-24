@@ -148,7 +148,6 @@ node {
                     echo "Reading master configuration from ${masterConfigFile}..."
                     def config = readJSON file: masterConfigFile
 
-                    config.base_user = developerConfig.base_user
                     config.user = developerConfig.user
                     config.deployment_type = developerConfig.deployment_type
                     config.deployment_path = developerConfig.deployment_path

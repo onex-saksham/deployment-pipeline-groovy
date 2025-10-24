@@ -27,7 +27,7 @@
         ]
     },
     "base_user": "jenkins",
-    "user": "__ODP_user__",
+    "user": "saksham",
     "deployment_type": "__deployment_type__",
     "deployment_path": "__deployment_path__",
     "ssh_port": "__ssh_port__",
