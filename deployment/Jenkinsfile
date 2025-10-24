@@ -46,12 +46,18 @@ node {
         stage('Gather Source Files') {
             echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
-                withVault(vaultSecrets: [
-                    [path: 'secret/data/jenkins/github', engineVersion: 2, secretValues: [
-                        [envVar: 'GITHUB_USER', vaultKey: 'username'],
-                        [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
-                    ]]
-                ], vaultCredentialId: 'vault-approle-credential')
+                withVault(
+                    configuration: [
+                        url: 'http://127.0.0.1:8200', // Your Vault server URL
+                        credentialsId: 'vault-approle-credential'
+                    ],
+                    secrets: [
+                        [path: 'secret/data/jenkins/github', engineVersion: 2, secretValues: [
+                            [envVar: 'GITHUB_USER', vaultKey: 'username'],
+                            [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
+                        ]]
+                    ]
+                )
                 {
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
