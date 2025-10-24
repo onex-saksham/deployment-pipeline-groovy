@@ -178,18 +178,20 @@ node {
                 config.nginx.node_ip = developerConfig.nginx.node_ip
                 
                 echo "Finished applying developer overrides."
-                
+
+                // --- APPLY BUILD PARAMETERS ---
+                // Override the configuration with values selected in the Jenkins UI.
                 echo "Updating final configuration with build parameters..."
                 
                 if (!config.releases) { config.releases = [:] }
                 if (!config.deploy) { config.deploy = [:] }
                 
-                config.releases.new_version = params.DEPLOY_VERSION
-                
+                config.releases.new_version = params.DEPLOY_VERSION                
                 config.deploy_sms = params.SMS.toString()
                 config.deploy_rcs = params.RCS.toString()
                 config.deploy_whatsapp = params.Whatsapp.toString()
 
+                // Create a list of all services to loop through.
                 def services = [
                     'ZOOKEEPER', 'KAFKA', 'NIFI', 'NIFI_REGISTRY', 'DORIS_FE', 'DORIS_BE', 
                     'CONNECT_FE_BE', 'NODE_EXPORTER', 'KAFKA_EXPORTER', 'PROMETHEUS', 
@@ -200,6 +202,7 @@ node {
                     echo "Select_All is selected. Overriding individual service selections."
                 }
 
+                // Sets deploy values in true or false
                 services.each { serviceName ->
                     def jsonKey = serviceName.toLowerCase().replace(' ', '_')
                     def paramValue = params.Select_All ? true : params[serviceName]
@@ -214,14 +217,17 @@ node {
                 echo "Successfully updated initialization_deployment_config.json."
             }
         }
-        
+
+        // Stage 5: Manual approval gate.
+        // This stage pauses the pipeline and waits for a human to confirm the configuration.        
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
             
             sh 'cat deployment/Script/passwords.json'
             sh 'cat deployment/Script/smtp_config.json'
             sh 'cat deployment/Script/initialization_deployment_config.json'
-            
+
+            // The 'input' step creates the "Proceed" button in the Jenkins UI.            
             input(
                 message: 'Please review the deployment configuration above. Do you want to proceed?',
                 ok: 'Yes, Proceed with Deployment' 
@@ -230,15 +236,18 @@ node {
             echo "Validation approved. Continuing to the next stage..."
         }
 
+        // Stage 6: Placeholder for any automated tests.
         stage('Test Cases (Planned)') {
             echo "SUCCESS: Placeholder stage for automated tests."
         }
+
+        // Stage 7: The main deployment execution.
         stage('Deployment Execution') {
             echo "Preparing SSH key and Python environment..."
             
             withCredentials([sshUserPrivateKey(credentialsId: 'server-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
                 try {
-                    // UPDATED PATH
+                    // Change the current directory to where the Python script is.
                     dir('deployment/Script') {
                         sh '''
                             echo "Setting up temporary SSH key..."
@@ -264,11 +273,13 @@ node {
             }
         }
 
+        // Stage 8: Placeholder for post-deployment validation.
         stage('Validation (Planned)') {
             echo "SUCCESS: Placeholder stage for post-deployment validation."
         }
 
     } catch (e) {
+        // If any stage in the 'try' block fails, this 'catch' block will execute.
         echo "An error occurred during the pipeline execution: ${e.getMessage()}"
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
