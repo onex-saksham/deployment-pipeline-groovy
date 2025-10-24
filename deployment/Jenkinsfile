@@ -47,7 +47,7 @@ node {
             echo "Fetching Releases folder from private repo..."
             dir('temp_private_repo') {
                 withVault(vaultSecrets: [
-                    [path: 'secret/data/jenkins/github', engineVersion: 2, secretValues: [
+                    [path: 'secret/jenkins/github', engineVersion: 2, secretValues: [
                         [envVar: 'GITHUB_USER', vaultKey: 'username'],
                         [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
                     ]]
@@ -107,7 +107,7 @@ node {
             echo "Successfully loaded master configuration file."
 
             withVault(vaultSecrets: [
-                [path: 'secret/data/jenkins/smtp', engineVersion: 2, secretValues: [
+                [path: 'secret/jenkins/smtp', engineVersion: 2, secretValues: [
                     [envVar: 'SMTP_PASSWORD', vaultKey: 'password']
                 ]]
             ], vaultCredentialId: 'vault-approle-credential')
@@ -278,7 +278,7 @@ ${initContent}
             echo "Preparing SSH key and Python environment..."
             
             withVault(vaultSecrets: [
-                [path: 'secret/data/jenkins/ssh-key', engineVersion: 2, secretValues: [
+                [path: 'secret/jenkins/ssh-key', engineVersion: 2, secretValues: [
                     [envVar: 'SSH_KEY_CONTENT', vaultKey: 'key']
                 ]]
             ], vaultCredentialId: 'vault-approle-credential')
