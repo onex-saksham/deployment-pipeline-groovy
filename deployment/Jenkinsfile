@@ -133,12 +133,11 @@ node {
                     echo "Reading and updating master smtp_config.json..."
                     def smtpConfig = readJSON file: 'deployment/Script/smtp_config.json'
                     
-                    if (developerConfig.passwords && developerConfig.passwords.smtp) {
-                        smtpConfig.recipients_email = developerConfig.passwords.smtp.recipients_email
+                    if (developerConfig.smtp && developerConfig.smtp.recipients_email) {
+                        smtpConfig.recipients_email = developerConfig.smtp.recipients_email
                     } else {
-                        echo "WARN: 'recipients_email' not found in developerConfig.passwords.smtp. Using default from master."
+                        echo "WARN: 'recipients_email' not found in developerConfig.smtp. Using default from master."
                     }
-
                     smtpConfig.sender_password = SMTP_PASSWORD
                     
                     writeJSON file: 'deployment/Script/smtp_config.json', json: smtpConfig, pretty: 4
