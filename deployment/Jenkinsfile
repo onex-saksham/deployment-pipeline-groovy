@@ -222,28 +222,13 @@ node {
         // This stage pauses the pipeline and waits for a human to confirm the configuration.        
         stage('Parameter Validation') {
             echo "Displaying updated configuration for validation:"
-            
-            script {
-                // Read the content of each file into a Groovy variable.
-                def passwordsContent = readFile('deployment/Script/passwords.json')
-                def smtpContent = readFile('deployment/Script/smtp_config.json')
-                def initContent = readFile('deployment/Script/initialization_deployment_config.json')
 
-                // The 'input' step creates the "Proceed" button in the Jenkins UI.
-                input(
-                    // Construct a multi-line message string that includes all three file contents.
-                    message: """Please review the deployment configuration below. Do you want to proceed?
-                                -------------------- passwords.json --------------------
-                                ${passwordsContent}
-                                -------------------- smtp_config.json --------------------
-                                ${smtpContent}
-                                -------------------- initialization_deployment_config.json --------------------
-                                ${initContent}
-                                """,
-                    ok: 'Yes, Proceed with Deployment' 
-                )
-            }
-            
+            sh 'cat deployment/Script/initialization_deployment_config.json'
+            // The 'input' step creates the "Proceed" button in the Jenkins UI.            
+            input(
+                message: 'Please review the deployment configuration above. Do you want to proceed?',
+                ok: 'Yes, Proceed with Deployment' 
+            )
             echo "Validation approved. Continuing to the next stage..."
         }
 
