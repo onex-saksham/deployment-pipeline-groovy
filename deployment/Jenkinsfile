@@ -219,21 +219,7 @@ node {
                     echo "Successfully updated initialization_deployment_config.json."
                 }
             }
-        }
-
-        // Stage 5: Manual approval gate.
-        // This stage pauses the pipeline and waits for a human to confirm the configuration.        
-        // stage('Parameter Validation') {
-        //     echo "Displaying updated configuration for validation:"
-
-        //     sh 'cat deployment/Script/initialization_deployment_config.json'
-        //     // The 'input' step creates the "Proceed" button in the Jenkins UI.            
-        //     input(
-        //         message: 'Please review the deployment configuration above. Do you want to proceed?',
-        //         ok: 'Yes, Proceed with Deployment' 
-        //     )
-        //     echo "Validation approved. Continuing to the next stage..."
-        // }
+        }        
 
         // Stage 5: Manual approval gate.
         stage('Parameter Validation') {
@@ -245,26 +231,28 @@ node {
                 def initContent = readFile('deployment/Script/initialization_deployment_config.json')
 
                 // --- MASKING LOGIC FOR SMTP CONFIG ---
-                // 1. Read the smtp_config.json file as a JSON object.
                 def smtpData = readJSON file: 'deployment/Script/smtp_config.json'
-                // 2. Overwrite the sensitive password field with a placeholder.
-                smtpData.sender_password = '**** MASKED FOR SECURITY ****'
-                // 3. Convert the modified object back into a nicely formatted string for display.
+                smtpData.sender_password = '**** MASKED IN UI ****'
                 def maskedSmtpContent = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(smtpData))
 
+                // --- CONSTRUCT HTML MESSAGE ---
+                // Create a multi-line string formatted with HTML tags for proper display.
+                def htmlMessage = """
+                    <b>Please review the deployment configuration below. Do you want to proceed?</b><br><br>
+                    
+                    <b>passwords.json</b><br>
+                    <pre>${passwordsContent}</pre><br>
+                    
+                    <b>smtp_config.json (Masked)</b><br>
+                    <pre>${maskedSmtpContent}</pre><br>
+                    
+                    <b>initialization_deployment_config.json</b><br>
+                    <pre>${initContent}</pre>
+                """
 
-                // The 'input' step creates the "Proceed" button in the Jenkins UI.
+                // The 'input' step will now render the HTML correctly.
                 input(
-                    // Construct a multi-line message string that includes all three file contents.
-                    message: """Please review the deployment configuration below. Do you want to proceed?
-
--------------------- passwords.json --------------------
-${passwordsContent}
--------------------- smtp_config.json (Masked) --------------------
-${maskedSmtpContent}
--------------------- initialization_deployment_config.json --------------------
-${initContent}
-""",
+                    message: htmlMessage,
                     ok: 'Yes, Proceed with Deployment' 
                 )
             }
