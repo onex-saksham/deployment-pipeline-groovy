@@ -231,28 +231,26 @@ node {
                 def initContent = readFile('deployment/Script/initialization_deployment_config.json')
 
                 // --- MASKING LOGIC FOR SMTP CONFIG ---
+                // 1. Read the smtp_config.json file as a JSON object.
                 def smtpData = readJSON file: 'deployment/Script/smtp_config.json'
-                smtpData.sender_password = '**** MASKED IN UI ****'
+                // 2. Overwrite the sensitive password field with a placeholder.
+                smtpData.sender_password = '**** MASKED FOR SECURITY ****'
+                // 3. Convert the modified object back into a nicely formatted string for display.
                 def maskedSmtpContent = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(smtpData))
 
-                // --- CONSTRUCT HTML MESSAGE ---
-                // Create a multi-line string formatted with HTML tags for proper display.
-                def htmlMessage = """
-                    <b>Please review the deployment configuration below. Do you want to proceed?</b><br><br>
-                    
-                    <b>passwords.json</b><br>
-                    <pre>${passwordsContent}</pre><br>
-                    
-                    <b>smtp_config.json (Masked)</b><br>
-                    <pre>${maskedSmtpContent}</pre><br>
-                    
-                    <b>initialization_deployment_config.json</b><br>
-                    <pre>${initContent}</pre>
-                """
 
-                // The 'input' step will now render the HTML correctly.
+                // The 'input' step creates the "Proceed" button in the Jenkins UI.
                 input(
-                    message: htmlMessage,
+                    // Construct a multi-line message string that includes all three file contents.
+                    message: """Please review the deployment configuration below. Do you want to proceed?
+
+-------------------- passwords.json --------------------
+${passwordsContent}
+-------------------- smtp_config.json (Masked) --------------------
+${maskedSmtpContent}
+-------------------- initialization_deployment_config.json --------------------
+${initContent}
+""",
                     ok: 'Yes, Proceed with Deployment' 
                 )
             }
