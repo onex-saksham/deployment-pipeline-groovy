@@ -106,12 +106,9 @@ node {
                     cp -r Jenkins/deployment-pipeline/Releases ./deployment/
                 """
 
-                echo "🎉 Successfully loaded Releases directory."
+                echo "Successfully loaded Releases directory."
             }
         }
-
-
-
 
         // Stage 3: Fetch the developer-specific configuration files from another repository.
         stage('Gather Developer Configs') {
@@ -129,6 +126,122 @@ node {
 
             echo "Successfully checked out developer configuration repository."
         }
+
+        stage('Fetch Passwords from Vault') {
+            echo "Fetching passwords from Vault and creating deployment/Script/passwords.json..."
+
+            // Define local output file
+            def PASSWORDS_FILE = "deployment/Script/passwords.json"
+
+            // Use Jenkins credential for Vault token
+            withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+                // Vault endpoint and secret path
+                def vaultAddr = "http://localhost:8200"
+                def vaultPath = "secret/data/deployment/node/test/passwords"
+
+                // Fetch secret data from Vault KV v2
+                def vaultResponse = sh(
+                    script: """
+                        curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                            ${vaultAddr}/v1/${vaultPath}
+                    """,
+                    returnStdout: true
+                ).trim()
+
+                if (!vaultResponse?.trim()) {
+                    error "Vault returned empty response for path: ${vaultPath}"
+                }
+
+                // Parse Vault response JSON
+                def vaultJson
+                try {
+                    vaultJson = readJSON text: vaultResponse
+                } catch (Exception e) {
+                    error "Failed to parse Vault response: ${e.message}"
+                }
+
+                // Extract KV v2 data safely
+                def passwordsData = null
+                if (vaultJson?.data?.data) {
+                    // KV v2 structure
+                    passwordsData = vaultJson.data.data
+                } else if (vaultJson?.data) {
+                    // KV v1 fallback
+                    passwordsData = vaultJson.data
+                }
+
+                if (!passwordsData) {
+                    echo "DEBUG: Vault JSON keys = ${vaultJson?.keySet() ?: 'none'}"
+                    error "Could not extract passwords map from Vault path: ${vaultPath}"
+                }
+
+                // Write the passwords as pretty JSON
+                writeFile file: PASSWORDS_FILE, text: groovy.json.JsonOutput.prettyPrint(
+                    groovy.json.JsonOutput.toJson(passwordsData)
+                )
+                echo "Successfully fetched and stored passwords.json at ${PASSWORDS_FILE}"
+            }
+
+            // Optional: verify the file exists
+            if (!fileExists(PASSWORDS_FILE)) {
+                error "passwords.json was not created successfully at ${PASSWORDS_FILE}"
+            }
+        }
+
+
+                    // echo "Fetching passwords.json from Vault for ${params.TARGET_ENV} environment..."
+
+                    // def PASSWORDS_FILE = "deployment/Script/passwords.json"
+
+                    // // Use root token credential to fetch full secret JSON from Vault
+                    // withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_ROOT_TOKEN')]) {
+                    //     def vaultAddr = "http://localhost:8200"
+                    //     def vaultPath = "secret/data/initialization/nodes/${params.TARGET_ENV.toLowerCase()}/passwords.json"
+
+                    //     // Fetch the secret via Vault HTTP API
+                    //     def vaultResponse = sh(
+                    //         script: """
+                    //             curl -s -H "X-Vault-Token: ${VAULT_ROOT_TOKEN}" \\
+                    //                 ${vaultAddr}/v1/${vaultPath}
+                    //         """,
+                    //         returnStdout: true
+                    //     ).trim()
+
+                    //     if (!vaultResponse?.trim()) {
+                    //         error "Vault returned empty response for path: ${vaultPath}"
+                    //     }
+
+                    //     // Parse response JSON safely
+                    //     def vaultJson
+                    //     try {
+                    //         vaultJson = readJSON text: vaultResponse
+                    //     } catch (Exception e) {
+                    //         error "Failed to parse Vault response: ${e.message}"
+                    //     }
+
+                    //     // Extract password data from KV v2 response
+                    //     def passwordsData = null
+                    //     if (vaultJson?.data?.data) {
+                    //         passwordsData = vaultJson.data.data
+                    //     } else if (vaultJson?.data) {
+                    //         passwordsData = vaultJson.data
+                    //     }
+
+                    //     if (!passwordsData) {
+                    //         error "No passwords found under Vault path: ${vaultPath}"
+                    //     }
+
+                    //     echo "Fetched passwords for ${passwordsData.size()} nodes."
+                    //     echo "Writing to ${PASSWORDS_FILE}..."
+
+                    //     // Write out as pretty JSON
+                    //     writeFile file: PASSWORDS_FILE, text: groovy.json.JsonOutput.prettyPrint(
+                    //         groovy.json.JsonOutput.toJson(passwordsData)
+                    //     )
+                    // }
+
+                    // echo "Successfully fetched and stored passwords.json at ${PASSWORDS_FILE}"
+
 
         // Stage 4: Merge all configurations into a single, final JSON file.
        stage('Prepare and Update Config') {
@@ -151,59 +264,6 @@ node {
                     
                     echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                     def developerConfig = readJSON file: developerConfigFile
-
-                    echo "Fetching passwords.json from Vault for ${params.TARGET_ENV} environment..."
-
-                    def PASSWORDS_FILE = "deployment/Script/passwords.json"
-
-                    // Use root token credential to fetch full secret JSON from Vault
-                    withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_ROOT_TOKEN')]) {
-                        def vaultAddr = "http://localhost:8200"
-                        def vaultPath = "secret/data/initialization/nodes/${params.TARGET_ENV.toLowerCase()}/passwords.json"
-
-                        // Fetch the secret via Vault HTTP API
-                        def vaultResponse = sh(
-                            script: """
-                                curl -s -H "X-Vault-Token: ${VAULT_ROOT_TOKEN}" \\
-                                    ${vaultAddr}/v1/${vaultPath}
-                            """,
-                            returnStdout: true
-                        ).trim()
-
-                        if (!vaultResponse?.trim()) {
-                            error "Vault returned empty response for path: ${vaultPath}"
-                        }
-
-                        // Parse response JSON safely
-                        def vaultJson
-                        try {
-                            vaultJson = readJSON text: vaultResponse
-                        } catch (Exception e) {
-                            error "Failed to parse Vault response: ${e.message}"
-                        }
-
-                        // Extract password data from KV v2 response
-                        def passwordsData = null
-                        if (vaultJson?.data?.data) {
-                            passwordsData = vaultJson.data.data
-                        } else if (vaultJson?.data) {
-                            passwordsData = vaultJson.data
-                        }
-
-                        if (!passwordsData) {
-                            error "No passwords found under Vault path: ${vaultPath}"
-                        }
-
-                        echo "Fetched passwords for ${passwordsData.size()} nodes."
-                        echo "Writing to ${PASSWORDS_FILE}..."
-
-                        // Write out as pretty JSON
-                        writeFile file: PASSWORDS_FILE, text: groovy.json.JsonOutput.prettyPrint(
-                            groovy.json.JsonOutput.toJson(passwordsData)
-                        )
-                    }
-
-                    echo "✅ Successfully fetched and stored passwords.json at ${PASSWORDS_FILE}"
 
                     // Extract the 'smtp' object and create a separate smtp_config.json file.
                     echo "Reading and updating master smtp_config.json..."
