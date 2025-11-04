@@ -102,8 +102,9 @@ node {
                 // Copy Releases folder into workspace root (same as original behavior)
                 echo "Copying Releases folder to the workspace root..."
                 sh """
-                    mkdir -p ./deployment
-                    cp -r Jenkins/deployment-pipeline/Releases ./deployment/
+                    cd /home/jenkins/workspace/deployment-pipeline-groovy/deployment
+                    mkdir -p Releases
+                    cp -r ../temp_private_repo/Jenkins/deployment-pipeline/Releases/* ./Releases/
                 """
 
                 echo "Successfully loaded Releases directory."
