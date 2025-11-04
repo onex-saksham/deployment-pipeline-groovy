@@ -482,11 +482,12 @@ ${initContent}
                 }
 
                 def sshSecret = vaultJson?.data?.data
-                if (!sshSecret || !sshSecret['key']) {
+                if (!sshSecret || !sshSecret['ssh-key']) {
                     error "SSH key not found at Vault path: ${vaultPath}"
                 }
 
-                def SSH_KEY_CONTENT = sshSecret['key']
+                def SSH_KEY_CONTENT = sshSecret['ssh-key']
+
                 echo "Successfully fetched SSH key from Vault (masked)."
 
                 script {
