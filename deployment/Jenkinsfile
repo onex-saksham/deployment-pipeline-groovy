@@ -47,14 +47,14 @@ node {
             echo "Fetching Releases folder from private repo..."
 
             dir('temp_private_repo') {
+                // Use Jenkins Vault root token to fetch GitHub credentials
                 withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
                     def vaultAddr = "http://localhost:8200"
                     def vaultPath = "secret/data/jenkins/github"
 
-                    def DEVELOPMENT_MODE = true  
-
                     echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
 
+                    // Securely fetch Vault secret
                     def vaultResponse = sh(
                         script: """
                             curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
@@ -79,31 +79,27 @@ node {
 
                     echo "Successfully retrieved GitHub credentials from Vault."
 
+                    // Configure Git LFS for authenticated pull
                     sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
 
-                    // Check if .git already exists (means we've already pulled once)
-                    def alreadyPulled = fileExists('.git')
+                    // Clean previous repo state (avoids remote conflict)
+                    sh "rm -rf .git"
 
-                    if (!alreadyPulled || !DEVELOPMENT_MODE) {
-                        echo "Performing full repo pull (LFS included)..."
-                        sh "rm -rf .git"
+                    // Perform sparse checkout of Releases directory
+                    def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
+                    sh """
+                        git init
+                        git remote add origin ${gitUrl}
+                        git config core.sparseCheckout true
+                        echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
+                        git pull origin main --depth=1
+                    """
 
-                        def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
-                        sh """
-                            git init
-                            git remote add origin ${gitUrl}
-                            git config core.sparseCheckout true
-                            echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
-                            git lfs install
-                            git pull origin main --depth=1
-                        """
-                    } else {
-                        echo "Skipping LFS pull — using previously fetched data for faster development runs."
-                    }
-
+                    // Cleanup sensitive Git config
                     sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
                 }
 
+                // Copy Releases folder into workspace root (same as original behavior)
                 echo "Copying Releases folder to the workspace root..."
                 sh """
                     mkdir -p ./deployment
