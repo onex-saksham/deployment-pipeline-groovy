@@ -455,39 +455,68 @@ ${initContent}
         // Stage 7: The main deployment execution.
         stage('Deployment Execution') {
             echo "Preparing SSH key and Python environment..."
-            
-            withVault(vaultSecrets: [
-                [path: 'initialization/jenkins/ssh_key', engineVersion: 2, secretValues: [
-                    [envVar: 'SSH_KEY_CONTENT', vaultKey: 'key']
-                ]]
-            ], vaultCredentialId: 'vault-root-token')
-            {
-                try {
-                    // Change the current directory to where the Python script is.
-                    dir('deployment/Script') {
-                        sh '''
-                            echo "Setting up temporary SSH key..."
-                            mkdir -p /home/jenkins/.ssh
-                            cp "$SSH_KEY_FILE" /home/jenkins/.ssh/id_rsa
-                            chmod 600 /home/jenkins/.ssh/id_rsa
-                            
-                            echo "Creating Python virtual environment..."
-                            python3 -m venv venv
 
-                            echo "Installing dependencies..."
-                            venv/bin/pip install -r requirements.txt
-                            
-                            echo "Running the deployment script..."
-                            export LOG_TO_CONSOLE=true
-                            venv/bin/python3 deployment.py
-                        '''
+            withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+                def vaultAddr = "http://localhost:8200"
+                def vaultPath = "secret/data/initialization/jenkins/ssh_key"
+
+                echo "Fetching SSH private key from Vault using root token..."
+
+                def vaultResponse = sh(
+                    script: """
+                        curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                            ${vaultAddr}/v1/${vaultPath}
+                    """,
+                    returnStdout: true
+                ).trim()
+
+                if (!vaultResponse?.trim()) {
+                    error "Vault returned empty response for path: ${vaultPath}"
+                }
+
+                def vaultJson
+                try {
+                    vaultJson = readJSON text: vaultResponse
+                } catch (Exception e) {
+                    error "Failed to parse Vault response: ${e.message}"
+                }
+
+                def sshSecret = vaultJson?.data?.data
+                if (!sshSecret || !sshSecret['key']) {
+                    error "SSH key not found at Vault path: ${vaultPath}"
+                }
+
+                def SSH_KEY_CONTENT = sshSecret['key']
+                echo "Successfully fetched SSH key from Vault (masked)."
+
+                script {
+                    try {
+                        dir('deployment/Script') {
+                            sh '''
+                                echo "Setting up temporary SSH key..."
+                                mkdir -p /home/jenkins/.ssh
+                                echo "$SSH_KEY_CONTENT" > /home/jenkins/.ssh/id_rsa
+                                chmod 600 /home/jenkins/.ssh/id_rsa
+
+                                echo "Creating Python virtual environment..."
+                                python3 -m venv venv
+
+                                echo "Installing dependencies..."
+                                venv/bin/pip install -r requirements.txt
+
+                                echo "Running the deployment script..."
+                                export LOG_TO_CONSOLE=true
+                                venv/bin/python3 deployment.py
+                            '''
+                        }
+                    } finally {
+                        echo "Cleaning up temporary SSH key..."
+                        sh 'rm -rf /home/jenkins/.ssh'
                     }
-                } finally {
-                    echo "Cleaning up temporary SSH key..."
-                    sh 'rm -rf /home/jenkins/.ssh'
                 }
             }
         }
+
 
         // Stage 8: Placeholder for post-deployment validation.
         stage('Validation (Planned)') {
@@ -500,4 +529,7 @@ ${initContent}
         currentBuild.result = 'FAILURE'
         error("Pipeline failed")
     } 
+    finally {        
+        // echo "Pipeline run finished. Cleaning up workspace..."
+        // cleanWs()
 }
