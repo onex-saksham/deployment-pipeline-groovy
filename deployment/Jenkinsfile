@@ -72,16 +72,14 @@ node {
 
                     // Clean up the temporary LFS authentication configuration for security.
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
-                }
-            }
-        }
+                
             // Copy the downloaded 'Releases' folder into the correct 'deployment' directory.
             echo "Copying Releases folder to the workspace root..."
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
 
             echo "Successfully loaded Releases directory."
         }
-
+        }
         // Stage 3: Fetch the developer-specific configuration files from another repository.
         stage('Gather Developer Configs') {
             echo "Fetching developer configuration repository..."
