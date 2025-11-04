@@ -532,4 +532,5 @@ ${initContent}
     finally {        
         // echo "Pipeline run finished. Cleaning up workspace..."
         // cleanWs()
+    }
 }
