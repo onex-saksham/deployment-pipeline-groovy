@@ -429,32 +429,31 @@ ${initContent}
                 }
 
                 def SSH_KEY_CONTENT = sshSecret['ssh-key']
-
                 echo "Successfully fetched SSH key from Vault (masked)."
 
                 script {
                     try {
                         dir('deployment/Script') {
-                            sh '''
-                            echo "Setting up temporary SSH key..."
-                            mkdir -p /home/jenkins/.ssh
-                            echo "$SSH_KEY_CONTENT" > /home/jenkins/.ssh/id_rsa
-                            chmod 600 /home/jenkins/.ssh/id_rsa
+                            sh """
+                                echo "Setting up temporary SSH key..."
+                                mkdir -p /home/jenkins/.ssh
+                                echo '${SSH_KEY_CONTENT}' > /home/jenkins/.ssh/id_rsa
+                                chmod 600 /home/jenkins/.ssh/id_rsa
 
-                            echo "Disabling strict host key checking for automated SSH..."
-                            echo -e "Host *\\n    StrictHostKeyChecking no\\n    UserKnownHostsFile=/dev/null" > /home/jenkins/.ssh/config
-                            chmod 600 /home/jenkins/.ssh/config
+                                echo "Disabling strict host key checking for automated SSH..."
+                                echo -e "Host *\\n    StrictHostKeyChecking no\\n    UserKnownHostsFile=/dev/null" > /home/jenkins/.ssh/config
+                                chmod 600 /home/jenkins/.ssh/config
 
-                            echo "Creating Python virtual environment..."
-                            python3 -m venv venv
+                                echo "Creating Python virtual environment..."
+                                python3 -m venv venv
 
-                            echo "Installing dependencies..."
-                            venv/bin/pip install -r requirements.txt
+                                echo "Installing dependencies..."
+                                venv/bin/pip install -r requirements.txt
 
-                            echo "Running the deployment script..."
-                            export LOG_TO_CONSOLE=true
-                            venv/bin/python3 deployment.py
-                        '''
+                                echo "Running the deployment script..."
+                                export LOG_TO_CONSOLE=true
+                                venv/bin/python3 deployment.py
+                            """
                         }
                     } finally {
                         echo "Cleaning up temporary SSH key..."
@@ -463,6 +462,7 @@ ${initContent}
                 }
             }
         }
+
 
 
         // Stage 8: Placeholder for post-deployment validation.
