@@ -8,7 +8,7 @@ node {
             booleanParam(name: 'Whatsapp', defaultValue: false),
 
             // == Environment and Version Selection ==
-            choice(name: 'TARGET_ENV', choices: ['Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
+            choice(name: 'TARGET_ENV', choices: ['Test', 'Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
 
@@ -45,16 +45,19 @@ node {
         // This uses Git LFS (Large File Storage).
         stage('Gather Source Files') {
             echo "Fetching Releases folder from private repo..."
+
             dir('temp_private_repo') {
                 withVault(vaultSecrets: [
                     [path: 'secret/jenkins/github', engineVersion: 2, secretValues: [
                         [envVar: 'GITHUB_USER', vaultKey: 'username'],
                         [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
                     ]]
-                ], vaultCredentialId: 'vault-root-token')  
+                ], vaultCredentialId: 'vault-root-token') {
+
+                    // Configure Git LFS with temporary Vault token
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
-                    // Perform a "sparse checkout" to only download the 'Releases' directory.
+                    // Perform a "sparse checkout" to only download the 'Releases' directory
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: '*/main']],
@@ -70,16 +73,18 @@ node {
                         ]
                     ])
 
-                    // Clean up the temporary LFS authentication configuration for security.
+                    // Clean up the temporary LFS authentication configuration for security
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
-                
-            // Copy the downloaded 'Releases' folder into the correct 'deployment' directory.
-            echo "Copying Releases folder to the workspace root..."
-            sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
+                }
 
-            echo "Successfully loaded Releases directory."
+                // Copy the downloaded 'Releases' folder into the correct 'deployment' directory
+                echo "Copying Releases folder to the workspace root..."
+                sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
+
+                echo "Successfully loaded Releases directory."
+            }
         }
-        }
+
         // Stage 3: Fetch the developer-specific configuration files from another repository.
         stage('Gather Developer Configs') {
             echo "Fetching developer configuration repository..."
