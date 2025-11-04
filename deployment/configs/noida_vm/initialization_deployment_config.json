@@ -28,7 +28,7 @@
     "base_user": "jenkins",
     "user": "saksham",
     "deployment_type": "single",
-    "deployment_path": "__deployment_path__",
+    "deployment_path": "/home/saksham",
     "ssh_port": "__ssh_port__",
     "deploy_whatsapp": "__wa__",
     "deploy_sms": "__sms__",
@@ -197,9 +197,7 @@
         "is_sa_seperate": "__is_sa_seperate__",
         "max_download_rows": "__max_download_rows__",
         "erlang_registry_url": "__erlang_registry_url__",
-        "heartbeat_interval": "__heartbeat_interval__",
-        "java_version": "17",
-        "python_version": "3.12.0"
+        "heartbeat_interval": "__heartbeat_interval__"
     },
     
     "backend_job": {
@@ -211,9 +209,7 @@
         "IS_SCP_REQUIRED":"__IS_SCP_REQUIRED__",
         "BACKEND_JOB_USER": "backend_job_user",
         "query_batch_size": "__query_batch_size__",
-        "deployment_path": "",
-        "java_version": "17",
-        "python_version": "3.12.0"
+        "deployment_path": ""
     },
     "nginx": {
         "node_ip": "__nginx_ip__",
