@@ -8,7 +8,7 @@ node {
             booleanParam(name: 'Whatsapp', defaultValue: false),
 
             // == Environment and Version Selection ==
-            choice(name: 'TARGET_ENV', choices: ['Dev', 'Single', 'QA', 'Prod', 'SBI Prod', 'SMPP DR', 'Functional Lab'], description: 'Select the target environment for deployment.'),
+            choice(name: 'TARGET_ENV', choices: ['Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
             string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
 
@@ -51,8 +51,7 @@ node {
                         [envVar: 'GITHUB_USER', vaultKey: 'username'],
                         [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
                     ]]
-                ], vaultCredentialId: 'vault-approle-credential')
-                {
+                ], vaultCredentialId: 'vault-root-token')  
                     sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
 
                     // Perform a "sparse checkout" to only download the 'Releases' directory.
@@ -70,11 +69,12 @@ node {
                             ]]
                         ]
                     ])
+
                     // Clean up the temporary LFS authentication configuration for security.
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                 }
             }
-
+        }
             // Copy the downloaded 'Releases' folder into the correct 'deployment' directory.
             echo "Copying Releases folder to the workspace root..."
             sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
@@ -111,7 +111,7 @@ node {
                 [path: 'secret/jenkins/smtp', engineVersion: 2, secretValues: [
                     [envVar: 'SMTP_PASSWORD', vaultKey: 'password']
                 ]]
-            ], vaultCredentialId: 'vault-approle-credential')
+            ], vaultCredentialId: 'vault-root-token')
                 {      
                     script {
                     // Build the path to the correct developer config file based on the selected environment.
@@ -121,13 +121,58 @@ node {
                     echo "Reading comprehensive developer configuration from ${developerConfigFile}..."
                     def developerConfig = readJSON file: developerConfigFile
 
-                    // --- DYNAMIC FILE CREATION ---
-                    echo "Extracting password data..."
-                    def passwordsData = developerConfig.passwords
-                    if (!passwordsData) { error("Developer config is missing the 'passwords' object.") }
-                    writeJSON file: 'deployment/Script/passwords.json', json: passwordsData, pretty: 4
-                    echo "Successfully created passwords.json"
+                    echo "Fetching passwords.json from Vault for ${params.TARGET_ENV} environment..."
 
+                    def PASSWORDS_FILE = "deployment/Script/passwords.json"
+
+                    // Use root token credential to fetch full secret JSON from Vault
+                    withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_ROOT_TOKEN')]) {
+                        def vaultAddr = "http://localhost:8200"
+                        def vaultPath = "secret/data/initialization/nodes/${params.TARGET_ENV.toLowerCase()}/passwords.json"
+
+                        // Fetch the secret via Vault HTTP API
+                        def vaultResponse = sh(
+                            script: """
+                                curl -s -H "X-Vault-Token: ${VAULT_ROOT_TOKEN}" \\
+                                    ${vaultAddr}/v1/${vaultPath}
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        if (!vaultResponse?.trim()) {
+                            error "Vault returned empty response for path: ${vaultPath}"
+                        }
+
+                        // Parse response JSON safely
+                        def vaultJson
+                        try {
+                            vaultJson = readJSON text: vaultResponse
+                        } catch (Exception e) {
+                            error "Failed to parse Vault response: ${e.message}"
+                        }
+
+                        // Extract password data from KV v2 response
+                        def passwordsData = null
+                        if (vaultJson?.data?.data) {
+                            passwordsData = vaultJson.data.data
+                        } else if (vaultJson?.data) {
+                            passwordsData = vaultJson.data
+                        }
+
+                        if (!passwordsData) {
+                            error "No passwords found under Vault path: ${vaultPath}"
+                        }
+
+                        echo "Fetched passwords for ${passwordsData.size()} nodes."
+                        echo "Writing to ${PASSWORDS_FILE}..."
+
+                        // Write out as pretty JSON
+                        writeFile file: PASSWORDS_FILE, text: groovy.json.JsonOutput.prettyPrint(
+                            groovy.json.JsonOutput.toJson(passwordsData)
+                        )
+                    }
+
+                    echo "✅ Successfully fetched and stored passwords.json at ${PASSWORDS_FILE}"
 
                     // Extract the 'smtp' object and create a separate smtp_config.json file.
                     echo "Reading and updating master smtp_config.json..."
@@ -148,8 +193,6 @@ node {
                     echo "Reading master configuration from ${masterConfigFile}..."
                     def config = readJSON file: masterConfigFile
 
-                    config.user = developerConfig.user
-                    config.deployment_type = developerConfig.deployment_type
                     config.deployment_path = developerConfig.deployment_path
                     config.ssh_port = developerConfig.ssh_port
 
@@ -178,6 +221,11 @@ node {
                     config.api.remote_jobs = developerConfig.api.remote_jobs
                     config.api.use_nginx = developerConfig.api.use_nginx
                     config.api.erlang_registry_ip = developerConfig.api.erlang_registry_ip
+                    config.api.is_sa_seperate = developerConfig.api.is_sa_seperate
+                    config.api.max_download_rows = developerConfig.api.max_download_rows
+                    config.api.erlang_registry_url = developerConfig.api.erlang_registry_url
+                    config.api.heartbeat_interval = developerConfig.api.heartbeat_interval
+                    config.api.ports = developerConfig.api.ports
 
                     if (!config.backend_job) { config.backend_job = [:] }
                     config.backend_job.node_ip = developerConfig.backend_job.node_ip
@@ -187,6 +235,7 @@ node {
                     config.backend_job.ZIP_SSH = developerConfig.backend_job.ZIP_SSH
                     config.backend_job.IS_SCP_REQUIRED = developerConfig.backend_job.IS_SCP_REQUIRED
                     config.backend_job.BACKEND_JOB_USER = developerConfig.backend_job.BACKEND_JOB_USER
+                    config.backend_job.query_batch_size = developerConfig.backend_job.query_batch_size
                     
                     if (!config.schema_registry) { config.schema_registry = [:] }
                     config.schema_registry.node_ip = developerConfig.schema_registry.node_ip
@@ -283,10 +332,10 @@ ${initContent}
             echo "Preparing SSH key and Python environment..."
             
             withVault(vaultSecrets: [
-                [path: 'secret/jenkins/ssh-key', engineVersion: 2, secretValues: [
+                [path: 'initialization/jenkins/ssh_key', engineVersion: 2, secretValues: [
                     [envVar: 'SSH_KEY_CONTENT', vaultKey: 'key']
                 ]]
-            ], vaultCredentialId: 'vault-approle-credential')
+            ], vaultCredentialId: 'vault-root-token')
             {
                 try {
                     // Change the current directory to where the Python script is.

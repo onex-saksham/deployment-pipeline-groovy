@@ -17,7 +17,6 @@
         "api": "__ap__",
         "nginx": "__ng__",
         "schema_registry":"__sr__"
-
     },
     "releases": {
         "new_version": "__new_version__",
@@ -27,8 +26,8 @@
         ]
     },
     "base_user": "jenkins",
-    "user": "__ODP_user__",
-    "deployment_type": "__deployment_type__",
+    "user": "saksham",
+    "deployment_type": "single",
     "deployment_path": "__deployment_path__",
     "ssh_port": "__ssh_port__",
     "deploy_whatsapp": "__wa__",
@@ -40,7 +39,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/data/zookeeper-storage"
+            "storage": "/home/saksham/data/zookeeper-storage"
         },
         "ports": {
             "client": 2181,
@@ -51,7 +50,7 @@
     "kraft_controller": {
         "deployment_path": "",
         "properties": {
-            "storage": "/data/kraft-controller-storage",
+            "storage": "/home/saksham/data/kraft-controller-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -72,7 +71,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/data/kafka-storage",
+            "storage": "/home/saksham/data/kafka-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -103,7 +102,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "zk_root_node": "/nifi",
+            "zk_root_node": "/home/saksham/nifi",
             "min_heap_memory": 4,
             "max_heap_memory": 8
         },
@@ -121,7 +120,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "${DORIS_HOME}/log"
+            "log": "/home/saksham/${DORIS_HOME}/log"
         },
         "ports": {
             "http": 8030,
@@ -136,8 +135,8 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "${DORIS_HOME}/log",
-            "storage": "/data/doris-be-storage"
+            "log": "$/home/saksham/{DORIS_HOME}/log",
+            "storage": "/home/saksham/data/doris-be-storage"
         },
         "ports": {
             "webserver": 8040,
@@ -171,7 +170,7 @@
         "node_ip": "__monitoring_ip__",
         "deployment_path": "",
         "properties": {
-            "storage": "/data/grafana-storage"
+            "storage": "/home/saksham/data/grafana-storage"
         },
         "ports": {
             "prometheus": 9090,
@@ -194,7 +193,13 @@
         "deployment_version": "__deployment_version__",
         "remote_jobs": "__remote_jobs__",
         "use_nginx": "__use_nginx__",
-        "erlang_registry_ip": "__erlang_registry_ip__"
+        "erlang_registry_ip": "__erlang_registry_ip__",
+        "is_sa_seperate": "__is_sa_seperate__",
+        "max_download_rows": "__max_download_rows__",
+        "erlang_registry_url": "__erlang_registry_url__",
+        "heartbeat_interval": "__heartbeat_interval__",
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     
     "backend_job": {
@@ -204,8 +209,11 @@
         "ZIP_USERNAME":"__ZIP_USERNAME__",
         "ZIP_SSH":"__ZIP_SSH__",
         "IS_SCP_REQUIRED":"__IS_SCP_REQUIRED__",
-        "BACKEND_JOB_USER": "__backend_JOB_USER__",
-        "deployment_path": ""
+        "BACKEND_JOB_USER": "backend_job_user",
+        "query_batch_size": "__query_batch_size__",
+        "deployment_path": "",
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "nginx": {
         "node_ip": "__nginx_ip__",
