@@ -47,23 +47,55 @@ node {
             echo "Fetching Releases folder from private repo..."
 
             dir('temp_private_repo') {
-                withVault(vaultSecrets: [
-                    [path: 'secret/jenkins/github', engineVersion: 2, secretValues: [
-                        [envVar: 'GITHUB_USER', vaultKey: 'username'],
-                        [envVar: 'GITHUB_TOKEN', vaultKey: 'token']
-                    ]]
-                ], vaultCredentialId: 'vault-root-token') {
+                // Use Jenkins credential to fetch Vault token
+                withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+                    def vaultAddr = "http://localhost:8200"
+                    def vaultPath = "secret/data/jenkins/github"
 
-                    // Configure Git LFS with temporary Vault token
-                    sh 'git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"'
+                    echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
 
-                    // Perform a "sparse checkout" to only download the 'Releases' directory
+                    // Hit Vault API directly using curl
+                    def vaultResponse = sh(
+                        script: """
+                            curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                                ${vaultAddr}/v1/${vaultPath}
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    if (!vaultResponse?.trim()) {
+                        error "Vault returned empty response for path: ${vaultPath}"
+                    }
+
+                    def vaultJson
+                    try {
+                        vaultJson = readJSON text: vaultResponse
+                    } catch (Exception e) {
+                        error "Failed to parse Vault response: ${e.message}"
+                    }
+
+                    def githubData = vaultJson?.data?.data
+                    if (!githubData || !githubData['username'] || !githubData['token']) {
+                        error "Missing username/token fields in Vault secret at ${vaultPath}"
+                    }
+
+                    def GITHUB_USER = githubData['username']
+                    def GITHUB_TOKEN = githubData['token']
+
+                    echo "Successfully retrieved GitHub credentials from Vault."
+
+                    // Configure Git LFS with the retrieved token
+                    sh """
+                        git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"
+                    """
+
+                    // Perform sparse checkout for Releases folder
                     checkout([
                         $class: 'GitSCM',
                         branches: [[name: '*/main']],
                         userRemoteConfigs: [[
-                            url: 'https://github.com/1xtel/ODP.git',
-                            credentialsId: 'private-github-token'
+                            url: 'https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git',
+                            credentialsId: 'private-github-token'  // optional, may be removed if using token directly
                         ]],
                         extensions: [
                             [$class: 'GitLFSPull'],
@@ -73,17 +105,16 @@ node {
                         ]
                     ])
 
-                    // Clean up the temporary LFS authentication configuration for security
                     sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
                 }
 
                 // Copy the downloaded 'Releases' folder into the correct 'deployment' directory
                 echo "Copying Releases folder to the workspace root..."
                 sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
-
                 echo "Successfully loaded Releases directory."
             }
         }
+
 
         // Stage 3: Fetch the developer-specific configuration files from another repository.
         stage('Gather Developer Configs') {
