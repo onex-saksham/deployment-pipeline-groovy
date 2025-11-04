@@ -253,49 +253,44 @@ node {
 
         // Stage 4: Merge all configurations into a single, final JSON file.
        stage('Prepare and Update Config') {
-            // Copy the master template for the selected environment into the 'Script' directory.
             echo "Copying master config file for ${params.TARGET_ENV} into the Script/ directory..."
             sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/initialization_deployment_config.json deployment/Script/"
             sh "cp deployment/configs/${params.TARGET_ENV.toLowerCase()}/smtp_config.json deployment/Script/"
             echo "Successfully loaded master configuration file."
 
             withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
-            def vaultAddr = "http://localhost:8200"
-            def vaultPath = "secret/data/jenkins/smtp"
+                def vaultAddr = "http://localhost:8200"
+                def vaultPath = "secret/data/jenkins/smtp"
 
-            echo "Fetching SMTP password from Vault using root token..."
+                echo "Fetching SMTP password from Vault using root token..."
 
-            // Fetch SMTP secret data using curl (KV v2)
-            def vaultResponse = sh(
-                script: """
-                    curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
-                        ${vaultAddr}/v1/${vaultPath}
-                """,
-                returnStdout: true
-            ).trim()
+                def vaultResponse = sh(
+                    script: """
+                        curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                            ${vaultAddr}/v1/${vaultPath}
+                    """,
+                    returnStdout: true
+                ).trim()
 
-            if (!vaultResponse?.trim()) {
-                error "Vault returned empty response for path: ${vaultPath}"
-            }
+                if (!vaultResponse?.trim()) {
+                    error "Vault returned empty response for path: ${vaultPath}"
+                }
 
-            def vaultJson
-            try {
-                vaultJson = readJSON text: vaultResponse
-            } catch (Exception e) {
-                error "Failed to parse Vault response: ${e.message}"
-            }
+                def vaultJson
+                try {
+                    vaultJson = readJSON text: vaultResponse
+                } catch (Exception e) {
+                    error "Failed to parse Vault response: ${e.message}"
+                }
 
-            // Extract KV v2 value (password)
-            def smtpSecret = vaultJson?.data?.data
-            if (!smtpSecret || !smtpSecret['password']) {
-                error "SMTP password not found at Vault path: ${vaultPath}"
-            }
-            def SMTP_PASSWORD = smtpSecret['password']
+                def smtpSecret = vaultJson?.data?.data
+                if (!smtpSecret || !smtpSecret['password']) {
+                    error "SMTP password not found at Vault path: ${vaultPath}"
+                }
 
-            echo "Successfully fetched SMTP password from Vault (masked)."
-            }
+                def SMTP_PASSWORD = smtpSecret['password']
+                echo "Successfully fetched SMTP password from Vault (masked)."
 
-                {      
                     script {
                     // Build the path to the correct developer config file based on the selected environment.
                     def masterConfigFile = 'deployment/Script/initialization_deployment_config.json'
