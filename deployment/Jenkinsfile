@@ -54,7 +54,7 @@ node {
 
                     echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
 
-                    // Hit Vault API directly using curl
+                    // Fetch Vault secret
                     def vaultResponse = sh(
                         script: """
                             curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
@@ -67,14 +67,9 @@ node {
                         error "Vault returned empty response for path: ${vaultPath}"
                     }
 
-                    def vaultJson
-                    try {
-                        vaultJson = readJSON text: vaultResponse
-                    } catch (Exception e) {
-                        error "Failed to parse Vault response: ${e.message}"
-                    }
-
+                    def vaultJson = readJSON text: vaultResponse
                     def githubData = vaultJson?.data?.data
+
                     if (!githubData || !githubData['username'] || !githubData['token']) {
                         error "Missing username/token fields in Vault secret at ${vaultPath}"
                     }
@@ -82,38 +77,36 @@ node {
                     def GITHUB_USER = githubData['username']
                     def GITHUB_TOKEN = githubData['token']
 
-                    echo "Successfully retrieved GitHub credentials from Vault."
+                    echo "✅ Successfully retrieved GitHub credentials from Vault."
 
-                    // Configure Git LFS with the retrieved token
+                    // Configure Git LFS
+                    sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
+
+                    // Build authenticated URL
+                    def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
+
+                    // Sparse checkout only Releases folder
                     sh """
-                        git config --global lfs.https://github.com/1xtel/ODP.git.header "Authorization: token ${GITHUB_TOKEN}"
+                        git init
+                        git remote add origin ${gitUrl}
+                        git config core.sparseCheckout true
+                        echo "Jenkins/deployment-pipeline/Releases/" >> .git/info/sparse-checkout
+                        git pull origin main
                     """
 
-                    // Perform sparse checkout for Releases folder
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/main']],
-                        userRemoteConfigs: [[
-                            url: 'https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git',
-                            credentialsId: 'private-github-token'  // optional, may be removed if using token directly
-                        ]],
-                        extensions: [
-                            [$class: 'GitLFSPull'],
-                            [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                                [path: 'Jenkins/deployment-pipeline/Releases/']
-                            ]]
-                        ]
-                    ])
-
-                    sh 'git config --global --unset lfs.https://github.com/1xtel/ODP.git.header'
+                    // Clean up for security
+                    sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
+                    sh "git remote remove origin"
                 }
 
-                // Copy the downloaded 'Releases' folder into the correct 'deployment' directory
+                // Move Releases directory to the deployment folder
                 echo "Copying Releases folder to the workspace root..."
-                sh "cp -r temp_private_repo/Jenkins/deployment-pipeline/Releases ./deployment/"
-                echo "Successfully loaded Releases directory."
+                sh "mkdir -p ./deployment && cp -r Jenkins/deployment-pipeline/Releases ./deployment/"
+
+                echo "🎉 Successfully loaded Releases directory."
             }
         }
+
 
 
         // Stage 3: Fetch the developer-specific configuration files from another repository.
