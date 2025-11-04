@@ -1,0 +1,235 @@
+{
+    "deploy": {
+        "zookeeper": "__zk__",
+        "kafka": "__kf__",
+        "nifi": "__nf__",
+        "nifi_registry": "__nr__",
+        "doris_fe": "__fe__",
+        "doris_be": "__be__",
+        "connect_fe_be": "__co__",
+        "node_exporter": "__nx__",
+        "kafka_exporter": "__kx__",
+        "prometheus": "__pm__",
+        "grafana": "__gf__",
+        "health_reports": "__hr__",
+        "recon": "__rc__",
+        "jobs": "__jb__",
+        "api": "__ap__",
+        "nginx": "__ng__",
+        "schema_registry":"__sr__"
+    },
+    "releases": {
+        "new_version": "__new_version__",
+        "current_version": "__current_version__",
+        "tenant_id": [
+            "__tenant_id__"
+        ]
+    },
+    "base_user": "jenkins",
+    "user": "saksham",
+    "deployment_type": "single",
+    "deployment_path": "__deployment_path__",
+    "ssh_port": "__ssh_port__",
+    "deploy_whatsapp": "__wa__",
+    "deploy_sms": "__sms__",
+    "deploy_rcs": "__rcs__",
+    "zookeeper": {
+        "node_ip": [
+            "__zookeeper_ip__"
+        ],
+        "deployment_path": "",
+        "properties": {
+            "storage": "/home/saksham/data/zookeeper-storage"
+        },
+        "ports": {
+            "client": 12181,
+            "peer_to_peer": 12888,
+            "leader_election": 13888
+        }
+    },
+    "kraft_controller": {
+        "deployment_path": "",
+        "properties": {
+            "storage": "/home/saksham/data/kraft-controller-storage",
+            "num_partitions": {
+                "single": 3,
+                "multi": 7
+            },
+            "replication_factor": {
+                "single": 1,
+                "multi": 3
+            },
+            "log_retention_hours": 72
+        },
+        "ports": {
+            "listener": 19093
+        }
+    },
+    "kafka": {
+        "broker_ip": [
+            "__kafka_ip__"
+        ],
+        "deployment_path": "",
+        "properties": {
+            "storage": "/home/saksham/data/kafka-storage",
+            "num_partitions": {
+                "single": 3,
+                "multi": 7
+            },
+            "replication_factor": {
+                "single": 1,
+                "multi": 3
+            },
+            "log_retention_hours": 72
+        },
+        "ports": {
+            "jmx": 19091,
+            "listener": 19092
+        }
+    },
+    "schema_registry": {
+        "node_ip": [
+            "__schema_registry_ip__"
+        ],
+        "deployment_path": "",
+        "ports": {
+            "listener": 18081
+        }
+    },
+    "nifi": {
+        "node_ip": [
+            "__nifi_ip__"
+        ],
+        "deployment_path": "",
+        "properties": {
+            "zk_root_node": "/home/saksham/nifi",
+            "min_heap_memory": 4,
+            "max_heap_memory": 8
+        },
+        "ports": {
+            "node_load_balance": 16342,
+            "http": 18080,
+            "remote_input_socket": 20443,
+            "registry": 28080,
+            "node_protocol": 21443
+        }
+    },
+    "doris_fe": {
+        "node_ip": [
+            "__doris_fe_ip__"
+        ],
+        "deployment_path": "",
+        "properties": {
+            "log": "/home/saksham/${DORIS_HOME}/log"
+        },
+        "ports": {
+            "http": 18030,
+            "edit_log": 19010,
+            "rpc": 19020,
+            "query": 19030
+        }
+    },
+    "doris_be": {
+        "node_ip": [
+            "__doris_be_ip__"
+        ],
+        "deployment_path": "",
+        "properties": {
+            "log": "$/home/saksham/{DORIS_HOME}/log",
+            "storage": "/home/saksham/data/doris-be-storage"
+        },
+        "ports": {
+            "webserver": 18040,
+            "brpc": 18060,
+            "heartbeat_service": 19050,
+            "be": 19060
+        }
+    },
+    "node_exporter": {
+        "deployment_path": "",
+        "for": [
+            "zookeeper",
+            "kafka",
+            "nifi",
+            "doris_fe",
+            "doris_be",
+            "monitoring",
+            "api"
+        ],
+        "ports": {
+            "listener": 19100
+        }
+    },
+    "kafka_exporter": {
+        "deployment_path": "",
+        "ports": {
+            "listener": 19308
+        }
+    },
+    "monitoring": {
+        "node_ip": "__monitoring_ip__",
+        "deployment_path": "",
+        "properties": {
+            "storage": "/home/saksham/data/grafana-storage"
+        },
+        "ports": {
+            "prometheus": 19090,
+            "grafana": 13000
+        },
+        "smtp": {
+            "from_address": "__sender_email__",
+            "password": "__sender_password__"
+        }
+    },
+    "api": {
+        "node_ip": [
+            "__api_ip__"
+        ],
+        "deployment_path": "",
+        "ports": {
+            "sms": 22000,
+            "warcs": 22001
+        },
+        "deployment_version": "__deployment_version__",
+        "remote_jobs": "__remote_jobs__",
+        "use_nginx": "__use_nginx__",
+        "erlang_registry_ip": "__erlang_registry_ip__",
+        "is_sa_seperate": "__is_sa_seperate__",
+        "max_download_rows": "__max_download_rows__",
+        "erlang_registry_url": "__erlang_registry_url__",
+        "heartbeat_interval": "__heartbeat_interval__"
+    },
+    
+    "backend_job": {
+        "node_ip": ["__backend_job_ip__"],
+        "ID_DESC_URL": "__ID_DESC_URL__",
+        "ZIP_HOST_IP":"__ZIP_HOST_IP__",
+        "ZIP_USERNAME":"__ZIP_USERNAME__",
+        "ZIP_SSH":"__ZIP_SSH__",
+        "IS_SCP_REQUIRED":"__IS_SCP_REQUIRED__",
+        "BACKEND_JOB_USER": "backend_job_user",
+        "query_batch_size": "__query_batch_size__",
+        "deployment_path": ""
+    },
+    "nginx": {
+        "node_ip": "__nginx_ip__",
+        "deployment_path": "",
+        "services": [
+            "doris_fe",
+            "api_sms",
+            "api_warcs",
+            "schema_registry"
+        ],
+        "ports": {
+            "doris_fe": 11080,
+            "api_sms": 11081,
+            "api_warcs": 11082,
+            "schema_registry": 11083
+    }
+    },
+    "health_report": {
+        "retry_count": 3,
+        "retry_interval": 300
+    }
+
+}
