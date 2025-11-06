@@ -838,16 +838,38 @@ def deploy_api(config, binary_path, ssh):
 
     logger.info(f"API deployment types: {deploy_types}")
 
-    use_nginx = config["api"]["use_nginx"]
+    # -----------------------------------------------
+# NEW pre-deployment config validation block
+# -----------------------------------------------
+    try:
+        use_nginx = config["api"].get("use_nginx", "false")
+        logger.info(f"use_nginx = {use_nginx}")
 
-    if use_nginx == "true":
-        # Nginx load balancer
-        doris_ip = backend_job_node_ip
-        doris_port = config["backend_job"]["ports"]["doris_fe"]
-    else:
-        # Direct Doris FE master
-        doris_ip = doris_fe_node_ip[0]
-        doris_port = doris_fe_node_port["query"]
+        if use_nginx == "true":
+            logger.info("Using Nginx load balancer for Doris FE connectivity...")
+            backend_job_cfg = config.get("backend_job", {})
+            if "ports" not in backend_job_cfg:
+                logger.error(f"backend_job section found, but missing 'ports' key. Keys present: {list(backend_job_cfg.keys())}")
+                raise KeyError("backend_job.ports missing")
+
+            doris_ip = backend_job_cfg.get("node_ip")
+            doris_port = backend_job_cfg["ports"].get("doris_fe")
+            logger.info(f"Doris via Nginx -> IPs: {doris_ip}, Port: {doris_port}")
+        else:
+            logger.info("Using direct Doris FE master connection...")
+            doris_ip = config["doris_fe"]["node_ip"][0]
+            doris_port = config["doris_fe"]["ports"].get("query")
+            logger.info(f"Doris FE direct -> IP: {doris_ip}, Port: {doris_port}")
+
+    except KeyError as ke:
+        logger.error(f"❌ Configuration error before API deployment: {ke}")
+        logger.error(f"Available keys in backend_job: {list(config.get('backend_job', {}).keys())}")
+        raise
+    except Exception as e:
+        logger.error(f"❌ Unexpected pre-deployment error: {type(e).__name__} -> {e}")
+        raise
+    # -----------------------------------------------
+
 
     try:
         logger.info("🔹 Starting API deployment setup")
