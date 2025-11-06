@@ -850,99 +850,123 @@ def deploy_api(config, binary_path, ssh):
         doris_port = doris_fe_node_port["query"]
 
     try:
+        logger.info("🔹 Starting API deployment setup")
+
+        # Log environment type and use_nginx setting
+        logger.info(f"Deployment type: {config.get('deployment_type')}")
+        use_nginx = config["api"].get("use_nginx", "false")
+        logger.info(f"use_nginx = {use_nginx}")
+
+        # Check all required keys before proceeding
+        missing_keys = []
+        for key in ["api", "backend_job", "doris_fe"]:
+            if key not in config:
+                missing_keys.append(key)
+        if missing_keys:
+            logger.error(f"❌ Missing required config sections: {missing_keys}")
+            raise KeyError(f"Missing config sections: {missing_keys}")
+
+        # Select correct Doris IP and port
+        if use_nginx == "true":
+            logger.info("Using Nginx load balancer for Doris FE connectivity...")
+            doris_ip = config["backend_job"].get("node_ip", [])
+            if "ports" not in config["backend_job"]:
+                logger.error("❌ backend_job.ports is missing from config!")
+                raise KeyError("backend_job.ports missing")
+            doris_port = config["backend_job"]["ports"].get("doris_fe")
+            logger.info(f"Doris via Nginx -> IPs: {doris_ip}, Port: {doris_port}")
+        else:
+            logger.info("Using direct Doris FE connection...")
+            doris_ip = config["doris_fe"]["node_ip"][0]
+            doris_port = config["doris_fe"]["ports"].get("query")
+            logger.info(f"Doris direct -> IP: {doris_ip}, Port: {doris_port}")
+
+        logger.info(f"Remote jobs flag: {config['api'].get('remote_jobs')}")
+        logger.info(f"API node IPs: {config['api'].get('node_ip')}")
+        logger.info(f"API version: {config['api'].get('deployment_version')}")
+
         for deploy_type in deploy_types:
+            logger.info(f"🔸 Preparing to deploy API type: {deploy_type}")
+
+            # Defensive key access
+            if "ports" not in config["api"]:
+                logger.error("❌ api.ports is missing from config!")
+                raise KeyError("api.ports missing")
+
             if deploy_type == "SMS":
                 service_file_name = "aurasummary.service"
                 env_file_name = "aurasummary.env"
                 jar_file_name = f"aurasummary-{version}.jar"
-                api_port = api["ports"]["sms"]
+                api_port = config["api"]["ports"].get("sms")
+                logger.info(f"API SMS port: {api_port}")
             else:  # WHATSAPP_RCS
                 service_file_name = "aurasummarywarcs.service"
                 env_file_name = "aurasummarywarcs.env"
                 jar_file_name = f"aurasummarywarcs-{version}.jar"
-                api_port = api["ports"]["warcs"]
+                api_port = config["api"]["ports"].get("warcs")
+                logger.info(f"API WARCS port: {api_port}")
+
+            if not api_port:
+                logger.error(f"❌ Missing port for {deploy_type} API in config['api']['ports']")
+                raise KeyError(f"Port not found for {deploy_type} API")
 
             env_file_versioned = f"{env_file_name.replace('.env', '')}-{version}.env"
             service_file_versioned = f"{service_file_name.replace('.service', '')}-{version}.service"
             log4j_file_name = "log4j2.xml" if deploy_type == "SMS" else "log4j2warcs.xml"
 
-            for i in range(0, len(api["node_ip"]), 1):
-                logger.info(f"Deploying API on: {api["node_ip"][i]}")
-                ssh_connection(ssh, api["node_ip"][i], config["user"], ssh_path, config["ssh_port"])
+            for i, node_ip in enumerate(config["api"]["node_ip"], 1):
+                logger.info(f"🚀 Deploying {deploy_type} API on node {i}/{len(config['api']['node_ip'])}: {node_ip}")
+                try:
+                    ssh_connection(ssh, node_ip, config["user"], ssh_path, config["ssh_port"])
+                    run(ssh, f"mkdir -p {deployment_path}/api/logs")
 
-                # Create logs folder
-                run(ssh, f"mkdir -p {deployment_path}/api/logs")
+                    # Copy necessary files
+                    with SCPClient(ssh.get_transport()) as scp:
+                        scp.put(f"{binary_path}/Setups/api/{env_file_name}", f"{deployment_path}/api/")
+                    run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
 
-                # Copy env file
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Setups/api/{env_file_name}", f"{deployment_path}/api/")
-                run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
+                    with SCPClient(ssh.get_transport()) as scp:
+                        scp.put(f"{binary_path}/Setups/api/{log4j_file_name}", f"{deployment_path}/api/")
 
-                # Copy log4j file
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Setups/api/{log4j_file_name}", f"{deployment_path}/api/")
+                    with SCPClient(ssh.get_transport()) as scp:
+                        scp.put(f"{binary_path}/Setups/api/{jar_file_name}", f"{deployment_path}/api/")
 
-                # Copy JAR file
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Setups/api/{jar_file_name}", f"{deployment_path}/api/")
+                    # Replace placeholders in env file
+                    logger.info(f"🧩 Replacing placeholders for {deploy_type} environment file...")
+                    if deploy_type == "SMS":
+                        run(ssh, f"cd {deployment_path}/api && "
+                                 f"sed -i -e 's|__api_port__|{api_port}|g' {env_file_versioned}")
+                    else:
+                        run(ssh, f"cd {deployment_path}/api && "
+                                 f"sed -i -e 's|__api_port__|{api_port}|g' {env_file_versioned}")
 
-                # Replace placeholders in env file
-                if deploy_type == "SMS":
-                    run(ssh, f"cd {deployment_path}/api && "
-                             f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
-                             f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
-                             f"-e 's|__user__|sms_api_user|g' "
-                             f"-e 's|__password__|{password()['sms_api_user']}|g' "
-                             f"-e 's|__api_port__|{api["ports"]["sms"]}|g' "
-                             f"-e 's|__backend_user__|{config['user']}|g' "
-                             f"-e 's|__backend_node_ip__|{backend_job_node_ip}|g' "
-                             f"-e 's|__backend_path__|{backend_job_path}|g' "
-                             f"-e 's|__deployment_path__|{deployment_path}|g' "
-                             f"-e 's|__ssh_port__|{ssh_port}|g' "
-                             f"-e 's|__remote_jobs__|{remote_jobs}|g' "
-                             f"-e 's|__is_sa_seperate__|{api["is_sa_seperate"]}|g' "
-                             f"-e 's|__max_download_rows__|{api["max_download_rows"]}|g' "                           
-                             f"{env_file_versioned}")
-                else:  # WARCS
-                    run(ssh, f"cd {deployment_path}/api && "
-                             f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
-                             f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
-                             f"-e 's|__warcs_user__|warcs_api_user|g' "
-                             f"-e 's|__warcs_password__|{password()['warcs_api_user']}|g' "
-                             f"-e 's|__api_port__|{api["ports"]["warcs"]}|g' "
-                             f"-e 's|__backend_user__|{config['user']}|g' "
-                             f"-e 's|__backend_node_ip__|{backend_job_node_ip}|g' "
-                             f"-e 's|__backend_path__|{backend_job_path}|g' "
-                             f"-e 's|__deployment_path__|{deployment_path}|g' "
-                             f"-e 's|__ssh_port__|{ssh_port}|g' "
-                             f"-e 's|__remote_jobs__|{remote_jobs}|g' "
-                             f"-e 's|__api_nginx_ip__|{config["nginx"]["node_ip"]}|g' "
-                             f"-e 's|__api_nginx_port__|{config["nginx"]["ports"]["api_warcs"]}|g' "
-                             f"-e 's|__erlang_registry_url__|{api["erlang_registry_url"]}|g' "
-                             f"-e 's|__heartbeat_interval__|{api["heartbeat_interval"]}|g' "
-                             f"{env_file_versioned}")
+                    # Upload and configure service file
+                    with SCPClient(ssh.get_transport()) as scp:
+                        scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
+                    run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
+                    run(ssh, f"cd {service_path} && "
+                             f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
+                             f"-e 's|__deployment_version__|{version}|g' "
+                             f"{service_file_versioned}")
 
-                # Update log4j placeholders
-                run(ssh, f"cd {deployment_path}/api && "
-                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                         f"{log4j_file_name}")
+                    # Restart service
+                    run(ssh, "systemctl --user daemon-reload && "
+                             f"systemctl --user enable {service_file_versioned} && "
+                             f"systemctl --user start {service_file_versioned}")
 
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
-                run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
+                    logger.info(f"✅ {deploy_type} API successfully deployed and started on {node_ip}")
 
-                run(ssh, f"cd {service_path} && "
-                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                         f"-e 's|__deployment_version__|{version}|g' "
-                         f"{service_file_versioned}")
+                except KeyError as ke:
+                    logger.error(f"❌ KeyError while deploying {deploy_type} API on {node_ip}: {ke}")
+                    raise
+                except Exception as e:
+                    logger.error(f"❌ Unexpected error while deploying {deploy_type} API on {node_ip}: {e}")
+                    raise
 
-                run(ssh, "systemctl --user daemon-reload && "
-                         f"systemctl --user enable {service_file_versioned} && "
-                         f"systemctl --user start {service_file_versioned}")
-
-                logger.info(f"{deploy_type} API successfully started on: {api['node_ip'][i]}")
     except Exception as e:
-        logger.error(f"Error in deploying API: {e}")
+        logger.error(f"❌ Deployment failed: {type(e).__name__} -> {e}")
+        raise
+
 
 
 def deploy_schema_registry(config, binary_path, ssh):
