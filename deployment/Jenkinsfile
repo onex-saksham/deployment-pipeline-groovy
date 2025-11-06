@@ -277,7 +277,7 @@ node {
                     
                     if (!config.monitoring) { config.monitoring = [:] }
                     config.monitoring.node_ip = developerConfig.monitoring.node_ip
-                    config.monitoring.smtp = developerConfig.monitoring.smtp
+                    config.monitoring.smtp.password = SMTP_PASSWORD
 
                     if (!config.api) { config.api = [:] }
                     config.api.node_ip = developerConfig.api.node_ip
