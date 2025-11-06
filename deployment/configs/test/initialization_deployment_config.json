@@ -120,7 +120,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "/home/saksham/${DORIS_HOME}/log"
+            "log": "${DORIS_HOME}/log"
         },
         "ports": {
             "http": 18030,
@@ -135,7 +135,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "/home/saksham/${DORIS_HOME}/log",
+            "log": "${DORIS_HOME}/log",
             "storage": "/home/saksham/data/doris-be-storage"
         },
         "ports": {
