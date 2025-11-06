@@ -91,20 +91,14 @@ node {
 
         // --- Instead, directly use the existing Releases folder ---
         def existingReleasesPath = "/home/jenkins/workspace/deployment-pipeline-groovy/deployment/Releases"
-        if (fileExists(existingReleasesPath)) {
-            echo "✅ Found existing Releases directory at: ${existingReleasesPath}"
-        } else {
-            error "❌ Releases directory not found at: ${existingReleasesPath}. Please re-enable Git fetch."
-        }
+if (fileExists(existingReleasesPath)) {
+    echo "✅ Found existing Releases directory at: ${existingReleasesPath}"
+} else {
+    error "❌ Releases directory not found at: ${existingReleasesPath}. Please re-enable Git fetch."
+}
 
-        // Copy existing Releases folder into working directory for consistency
-        echo "Copying existing Releases folder into workspace..."
-        sh """
-            mkdir -p /home/jenkins/workspace/deployment-pipeline-groovy/deployment/Releases
-            cp -r ${existingReleasesPath}/* /home/jenkins/workspace/deployment-pipeline-groovy/deployment/Releases/
-        """
+echo "Skipping copy — using existing Releases folder directly."
 
-        echo "✅ Using existing Releases directory successfully."
     }
 }
 
