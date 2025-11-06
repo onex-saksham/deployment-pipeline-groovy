@@ -7,9 +7,9 @@ node {
             booleanParam(name: 'RCS', defaultValue: false),
             booleanParam(name: 'Whatsapp', defaultValue: false),
 
-            // == Environment and Version Selection ==
+            // == Environment Selection ==
             choice(name: 'TARGET_ENV', choices: ['Test', 'Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
-            string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
+            // string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
 
             // == Service Selection Toggles ==
@@ -289,7 +289,6 @@ node {
                     config.api.max_download_rows = developerConfig.api.max_download_rows
                     config.api.erlang_registry_url = developerConfig.api.erlang_registry_url
                     config.api.heartbeat_interval = developerConfig.api.heartbeat_interval
-                    config.api.ports = developerConfig.api.ports
 
                     if (!config.backend_job) { config.backend_job = [:] }
                     config.backend_job.node_ip = developerConfig.backend_job.node_ip
@@ -313,10 +312,10 @@ node {
                     // Override the configuration with values selected in the Jenkins UI.
                     echo "Updating final configuration with build parameters..."
                     
-                    if (!config.releases) { config.releases = [:] }
+                    // if (!config.releases) { config.releases = [:] }
                     if (!config.deploy) { config.deploy = [:] }
                     
-                    config.releases.new_version = params.DEPLOY_VERSION                
+                    // config.releases.new_version = params.DEPLOY_VERSION                
                     config.deploy_sms = params.SMS.toString()
                     config.deploy_rcs = params.RCS.toString()
                     config.deploy_whatsapp = params.Whatsapp.toString()
@@ -459,7 +458,6 @@ ${initContent}
                 }
             }
         }
-
 
 
         // Stage 8: Placeholder for post-deployment validation.
