@@ -27,8 +27,8 @@
         ]
     },
     "base_user": "jenkins",
-    "user": "saksham",
-    "deployment_type": "__deployment_type__",
+    "user": "onexodp",
+    "deployment_type": "multi",
     "deployment_path": "__deployment_path__",
     "ssh_port": "__ssh_port__",
     "deploy_whatsapp": "__wa__",
