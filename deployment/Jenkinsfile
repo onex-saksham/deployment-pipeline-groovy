@@ -43,73 +43,73 @@ node {
 
         // Stage 2: Fetch large binary files ('Releases') from a separate private repository.
         // This uses Git LFS (Large File Storage).
-        // stage('Gather Source Files') {
-        //     echo "Fetching Releases folder from private repo..."
+        stage('Gather Source Files') {
+            echo "Fetching Releases folder from private repo..."
 
-        //     dir('temp_private_repo') {
-        //         // Use Jenkins Vault root token to fetch GitHub credentials
-        //         withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
-        //             def vaultAddr = "http://localhost:8200"
-        //             def vaultPath = "secret/data/jenkins/github"
+            // dir('temp_private_repo') {
+            //     // Use Jenkins Vault root token to fetch GitHub credentials
+            //     withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+            //         def vaultAddr = "http://localhost:8200"
+            //         def vaultPath = "secret/data/jenkins/github"
 
-        //             echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
+            //         echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
 
-        //             // Securely fetch Vault secret
-        //             def vaultResponse = sh(
-        //                 script: """
-        //                     curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
-        //                         ${vaultAddr}/v1/${vaultPath}
-        //                 """,
-        //                 returnStdout: true
-        //             ).trim()
+            //         // Securely fetch Vault secret
+            //         def vaultResponse = sh(
+            //             script: """
+            //                 curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+            //                     ${vaultAddr}/v1/${vaultPath}
+            //             """,
+            //             returnStdout: true
+            //         ).trim()
 
-        //             if (!vaultResponse) {
-        //                 error "Vault returned empty response for path: ${vaultPath}"
-        //             }
+            //         if (!vaultResponse) {
+            //             error "Vault returned empty response for path: ${vaultPath}"
+            //         }
 
-        //             def vaultJson = readJSON text: vaultResponse
-        //             def githubData = vaultJson?.data?.data
+            //         def vaultJson = readJSON text: vaultResponse
+            //         def githubData = vaultJson?.data?.data
 
-        //             if (!githubData || !githubData['username'] || !githubData['token']) {
-        //                 error "Missing username/token fields in Vault secret at ${vaultPath}"
-        //             }
+            //         if (!githubData || !githubData['username'] || !githubData['token']) {
+            //             error "Missing username/token fields in Vault secret at ${vaultPath}"
+            //         }
 
-        //             def GITHUB_USER = githubData['username']
-        //             def GITHUB_TOKEN = githubData['token']
+            //         def GITHUB_USER = githubData['username']
+            //         def GITHUB_TOKEN = githubData['token']
 
-        //             echo "Successfully retrieved GitHub credentials from Vault."
+            //         echo "Successfully retrieved GitHub credentials from Vault."
 
-        //             // Configure Git LFS for authenticated pull
-        //             sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
+            //         // Configure Git LFS for authenticated pull
+            //         sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
 
-        //             // Clean previous repo state (avoids remote conflict)
-        //             sh "rm -rf .git"
+            //         // Clean previous repo state (avoids remote conflict)
+            //         sh "rm -rf .git"
 
-        //             // Perform sparse checkout of Releases directory
-        //             def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
-        //             sh """
-        //                 git init
-        //                 git remote add origin ${gitUrl}
-        //                 git config core.sparseCheckout true
-        //                 echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
-        //                 git pull origin main --depth=1
-        //             """
+            //         // Perform sparse checkout of Releases directory
+            //         def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
+            //         sh """
+            //             git init
+            //             git remote add origin ${gitUrl}
+            //             git config core.sparseCheckout true
+            //             echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
+            //             git pull origin main --depth=1
+            //         """
 
-        //             // Cleanup sensitive Git config
-        //             sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
-        //         }
+            //         // Cleanup sensitive Git config
+            //         sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
+            //     }
 
-        //         // Copy Releases folder into workspace root (same as original behavior)
-        //         echo "Copying Releases folder to the workspace root..."
-        //         sh """
-        //             cd /home/jenkins/workspace/deployment-pipeline-groovy/deployment
-        //             mkdir -p Releases
-        //             cp -r ../temp_private_repo/Jenkins/deployment-pipeline/Releases/* ./Releases/
-        //         """
+                // Copy Releases folder into workspace root (same as original behavior)
+                echo "Copying Releases folder to the workspace root..."
+                sh """
+                    cd /home/jenkins/workspace/deployment-pipeline-groovy/deployment
+                    mkdir -p Releases
+                    cp -r ../temp_private_repo/Jenkins/deployment-pipeline/Releases/* ./Releases/
+                """
 
-        //         echo "Successfully loaded Releases directory."
-        //     }
-        // }
+                echo "Successfully loaded Releases directory."
+            }
+        }
 
 
 
