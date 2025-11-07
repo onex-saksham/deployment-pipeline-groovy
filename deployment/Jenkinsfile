@@ -453,7 +453,9 @@ ${initContent}
                                 cat deployment.log
                             """
                         }
-                    } 
+                    } finally {
+                        echo "Cleaning up temporary SSH key..."
+                    }
                 }
             }
         }
