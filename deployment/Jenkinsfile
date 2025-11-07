@@ -449,7 +449,8 @@ ${initContent}
 
                                 echo "Running the deployment script..."
                                 export LOG_TO_CONSOLE=true
-                                venv/bin/python3 deployment.py 2>&1 | tee deployment.log
+                                venv/bin/python3 deployment.py 2>&1
+                                cat deployment.log
                             """
                         }
                     } finally {
