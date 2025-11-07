@@ -44,63 +44,72 @@ node {
         // Stage 2: Fetch large binary files ('Releases') from a separate private repository.
         // This uses Git LFS (Large File Storage).
         stage('Gather Source Files') {
-    echo "📦 Using existing Releases folder (skipping Git fetch temporarily)..."
+            echo "Fetching Releases folder from private repo..."
 
-    dir('temp_private_repo') {
-        // --- TEMPORARY DISABLE: Fetch from Vault + GitHub ---
-        // withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
-        //     def vaultAddr = "http://localhost:8200"
-        //     def vaultPath = "secret/data/jenkins/github"
-        //     echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
+            dir('temp_private_repo') {
+                // Use Jenkins Vault root token to fetch GitHub credentials
+                withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+                    def vaultAddr = "http://localhost:8200"
+                    def vaultPath = "secret/data/jenkins/github"
 
-        //     def vaultResponse = sh(
-        //         script: """
-        //             curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
-        //                 ${vaultAddr}/v1/${vaultPath}
-        //         """,
-        //         returnStdout: true
-        //     ).trim()
+                    echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
 
-        //     if (!vaultResponse) {
-        //         error "Vault returned empty response for path: ${vaultPath}"
-        //     }
+                    // Securely fetch Vault secret
+                    def vaultResponse = sh(
+                        script: """
+                            curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                                ${vaultAddr}/v1/${vaultPath}
+                        """,
+                        returnStdout: true
+                    ).trim()
 
-        //     def vaultJson = readJSON text: vaultResponse
-        //     def githubData = vaultJson?.data?.data
-        //     if (!githubData || !githubData['username'] || !githubData['token']) {
-        //         error "Missing username/token fields in Vault secret at ${vaultPath}"
-        //     }
+                    if (!vaultResponse) {
+                        error "Vault returned empty response for path: ${vaultPath}"
+                    }
 
-        //     def GITHUB_USER = githubData['username']
-        //     def GITHUB_TOKEN = githubData['token']
-        //     echo "Successfully retrieved GitHub credentials from Vault."
+                    def vaultJson = readJSON text: vaultResponse
+                    def githubData = vaultJson?.data?.data
 
-        //     sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
-        //     sh "rm -rf .git"
+                    if (!githubData || !githubData['username'] || !githubData['token']) {
+                        error "Missing username/token fields in Vault secret at ${vaultPath}"
+                    }
 
-        //     def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
-        //     sh """
-        //         git init
-        //         git remote add origin ${gitUrl}
-        //         git config core.sparseCheckout true
-        //         echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
-        //         git pull origin main --depth=1
-        //     """
-        //     sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
-        // }
+                    def GITHUB_USER = githubData['username']
+                    def GITHUB_TOKEN = githubData['token']
 
-        // --- Instead, directly use the existing Releases folder ---
-        def existingReleasesPath = "/home/jenkins/workspace/deployment-pipeline-groovy/deployment/Releases"
-if (fileExists(existingReleasesPath)) {
-    echo "✅ Found existing Releases directory at: ${existingReleasesPath}"
-} else {
-    error "❌ Releases directory not found at: ${existingReleasesPath}. Please re-enable Git fetch."
-}
+                    echo "Successfully retrieved GitHub credentials from Vault."
 
-echo "Skipping copy — using existing Releases folder directly."
+                    // Configure Git LFS for authenticated pull
+                    sh "git config --global lfs.https://github.com/1xtel/ODP.git.header 'Authorization: token ${GITHUB_TOKEN}'"
 
-    }
-}
+                    // Clean previous repo state (avoids remote conflict)
+                    sh "rm -rf .git"
+
+                    // Perform sparse checkout of Releases directory
+                    def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
+                    sh """
+                        git init
+                        git remote add origin ${gitUrl}
+                        git config core.sparseCheckout true
+                        echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
+                        git pull origin main --depth=1
+                    """
+
+                    // Cleanup sensitive Git config
+                    sh "git config --global --unset lfs.https://github.com/1xtel/ODP.git.header"
+                }
+
+                // Copy Releases folder into workspace root (same as original behavior)
+                echo "Copying Releases folder to the workspace root..."
+                sh """
+                    cd /home/jenkins/workspace/deployment-pipeline-groovy/deployment
+                    mkdir -p Releases
+                    cp -r ../temp_private_repo/Jenkins/deployment-pipeline/Releases/* ./Releases/
+                """
+
+                echo "Successfully loaded Releases directory."
+            }
+        }
 
 
 
@@ -131,7 +140,7 @@ echo "Skipping copy — using existing Releases folder directly."
             withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
                 // Vault endpoint and secret path
                 def vaultAddr = "http://localhost:8200"
-                def vaultPath = "secret/data/deployment/node/test/passwords"
+                def vaultPath = "secret/data/deployment/node/${params.TARGET_ENV.toLowerCase()}/passwords"
 
                 // Fetch secret data from Vault KV v2
                 def vaultResponse = sh(
@@ -440,7 +449,7 @@ ${initContent}
 
                                 echo "Running the deployment script..."
                                 export LOG_TO_CONSOLE=true
-                                venv/bin/python3 deployment.py
+                                venv/bin/python3 deployment.py 2>&1 | tee deployment.log
                             """
                         }
                     } finally {

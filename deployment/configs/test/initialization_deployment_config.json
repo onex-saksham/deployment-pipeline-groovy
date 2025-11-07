@@ -17,6 +17,7 @@
         "api": "__ap__",
         "nginx": "__ng__",
         "schema_registry":"__sr__"
+
     },
     "releases": {
         "new_version": "__new_version__",
@@ -25,9 +26,9 @@
             "__tenant_id__"
         ]
     },
-    "base_user": "jenkins",
-    "user": "saksham",
-    "deployment_type": "single",
+    "base_user": "__hopbox_user__",
+    "user": "__ODP_user__",
+    "deployment_type": "__deployment_type__",
     "deployment_path": "__deployment_path__",
     "ssh_port": "__ssh_port__",
     "deploy_whatsapp": "__wa__",
@@ -39,18 +40,20 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/zookeeper-storage"
+            "storage": "/data/zookeeper-storage"
         },
         "ports": {
-            "client": 12181,
-            "peer_to_peer": 12888,
-            "leader_election": 13888
-        }
+            "client": 2181,
+            "peer_to_peer": 2888,
+            "leader_election": 3888
+        },
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "kraft_controller": {
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kraft-controller-storage",
+            "storage": "/data/kraft-controller-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -62,7 +65,7 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "listener": 19093
+            "listener": 9093
         }
     },
     "kafka": {
@@ -71,7 +74,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kafka-storage",
+            "storage": "/data/kafka-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -83,9 +86,11 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "jmx": 19091,
-            "listener": 19092
-        }
+            "jmx": 9091,
+            "listener": 9092
+        },
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "schema_registry": {
         "node_ip": [
@@ -93,7 +98,7 @@
         ],
         "deployment_path": "",
         "ports": {
-            "listener": 18081
+            "listener": 8081
         }
     },
     "nifi": {
@@ -102,17 +107,19 @@
         ],
         "deployment_path": "",
         "properties": {
-            "zk_root_node": "/home/saksham/nifi",
+            "zk_root_node": "/nifi",
             "min_heap_memory": 4,
             "max_heap_memory": 8
         },
         "ports": {
-            "node_load_balance": 16342,
-            "http": 18080,
-            "remote_input_socket": 20443,
-            "registry": 28080,
-            "node_protocol": 21443
-        }
+            "node_load_balance": 6342,
+            "http": 8080,
+            "remote_input_socket": 10443,
+            "registry": 18080,
+            "node_protocol": 11443
+        },
+        "java_version": "21",
+        "python_version": "3.12.0"
     },
     "doris_fe": {
         "node_ip": [
@@ -123,11 +130,13 @@
             "log": "${DORIS_HOME}/log"
         },
         "ports": {
-            "http": 18030,
-            "edit_log": 19010,
-            "rpc": 19020,
-            "query": 19030
-        }
+            "http": 8030,
+            "edit_log": 9010,
+            "rpc": 9020,
+            "query": 9030
+        },
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "doris_be": {
         "node_ip": [
@@ -136,14 +145,16 @@
         "deployment_path": "",
         "properties": {
             "log": "${DORIS_HOME}/log",
-            "storage": "/home/saksham/data/doris-be-storage"
+            "storage": "/data/doris-be-storage"
         },
         "ports": {
-            "webserver": 18040,
-            "brpc": 18060,
-            "heartbeat_service": 19050,
-            "be": 19060
-        }
+            "webserver": 8040,
+            "brpc": 8060,
+            "heartbeat_service": 9050,
+            "be": 9060
+        },
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "node_exporter": {
         "deployment_path": "",
@@ -157,25 +168,27 @@
             "api"
         ],
         "ports": {
-            "listener": 19100
+            "listener": 9100
         }
     },
     "kafka_exporter": {
         "deployment_path": "",
         "ports": {
-            "listener": 19308
+            "listener": 9308
         }
     },
     "monitoring": {
         "node_ip": "__monitoring_ip__",
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/grafana-storage"
+            "storage": "/data/grafana-storage"
         },
         "ports": {
-            "prometheus": 19090,
-            "grafana": 13000
+            "prometheus": 9090,
+            "grafana": 3000
         },
+        "java_version": "17",
+        "python_version": "3.12.0",
         "smtp": {
             "from_address": "__sender_email__",
             "password": "__sender_password__"
@@ -187,8 +200,8 @@
         ],
         "deployment_path": "",
         "ports": {
-            "sms": 22000,
-            "warcs": 22001
+            "sms": 12000,
+            "warcs": 12001
         },
         "deployment_version": "__deployment_version__",
         "remote_jobs": "__remote_jobs__",
@@ -197,9 +210,10 @@
         "is_sa_seperate": "__is_sa_seperate__",
         "max_download_rows": "__max_download_rows__",
         "erlang_registry_url": "__erlang_registry_url__",
-        "heartbeat_interval": "__heartbeat_interval__"
+        "heartbeat_interval": "__heartbeat_interval__",
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
-    
     "backend_job": {
         "node_ip": ["__backend_job_ip__"],
         "ID_DESC_URL": "__ID_DESC_URL__",
@@ -209,7 +223,9 @@
         "IS_SCP_REQUIRED":"__IS_SCP_REQUIRED__",
         "BACKEND_JOB_USER": "backend_job_user",
         "query_batch_size": "__query_batch_size__",
-        "deployment_path": ""
+        "deployment_path": "",
+        "java_version": "17",
+        "python_version": "3.12.0"
     },
     "nginx": {
         "node_ip": "__nginx_ip__",
@@ -221,10 +237,10 @@
             "schema_registry"
         ],
         "ports": {
-            "doris_fe": 11080,
-            "api_sms": 11081,
-            "api_warcs": 11082,
-            "schema_registry": 11083
+            "doris_fe": 1080,
+            "api_sms": 1081,
+            "api_warcs": 1082,
+            "schema_registry": 1083
     }
     },
     "health_report": {

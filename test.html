@@ -1,0 +1,41 @@
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    h2 { background-color: #2c3e50; color: white; padding: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    td, th { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    .success { color: green; font-weight: bold; }
+    .failure { color: red; font-weight: bold; }
+    .footer { margin-top: 15px; font-size: 0.9em; color: #777; }
+  </style>
+</head>
+<body>
+  <h2>Jenkins Build Report</h2>
+
+  <table>
+    <tr><th>Pipeline / Job Name</th><td>${JOB_NAME}</td></tr>
+    <tr><th>Build Number</th><td>#${BUILD_NUMBER}</td></tr>
+    <tr><th>Build Status</th>
+      <td>
+        <span class="${BUILD_STATUS == 'SUCCESS' ? 'success' : 'failure'}">
+          ${BUILD_STATUS}
+        </span>
+      </td>
+    </tr>
+    <tr><th>Duration</th><td>${BUILD_DURATION}</td></tr>
+    <tr><th>Timestamp</th><td>${BUILD_TIMESTAMP}</td></tr>
+  </table>
+
+  <#if BUILD_STATUS != "SUCCESS">
+    <h3>Error Summary</h3>
+    <pre>${BUILD_LOG, maxLines=40}</pre>
+  </#if>
+
+  <div class="footer">
+    Jenkins URL: <a href="${BUILD_URL}">${BUILD_URL}</a><br/>
+    Generated automatically at ${BUILD_TIMESTAMP}
+  </div>
+</body>
+</html>
