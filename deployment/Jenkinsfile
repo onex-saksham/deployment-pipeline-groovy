@@ -437,8 +437,7 @@ ${initContent}
                                 echo '${SSH_KEY_CONTENT}' > /home/jenkins/.ssh/id_rsa
                                 chmod 600 /home/jenkins/.ssh/id_rsa
 
-                                echo "Disabling strict host key checking for automated SSH..."
-                                echo -e "Host *\\n    StrictHostKeyChecking no\\n    UserKnownHostsFile=/dev/null" > /home/jenkins/.ssh/config
+                                echo "Disabling strict host key checking for automated SSH..."                                
                                 chmod 600 /home/jenkins/.ssh/config
 
                                 echo "Creating Python virtual environment..."
