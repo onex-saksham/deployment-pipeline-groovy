@@ -26,9 +26,9 @@
         ]
     },
     "base_user": "jenkins",
-    "user": "saksham",
+    "user": "onexodp",
     "deployment_type": "single",
-    "deployment_path": "/home/saksham",
+    "deployment_path": "__deployment_path__",
     "ssh_port": "__ssh_port__",
     "deploy_whatsapp": "__wa__",
     "deploy_sms": "__sms__",
@@ -39,18 +39,18 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/zookeeper-storage"
+            "storage": "/data/zookeeper-storage"
         },
         "ports": {
-            "client": 2181,
-            "peer_to_peer": 2888,
-            "leader_election": 3888
+            "client": 12181,
+            "peer_to_peer": 12888,
+            "leader_election": 13888
         }
     },
     "kraft_controller": {
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kraft-controller-storage",
+            "storage": "/data/kraft-controller-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -62,7 +62,7 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "listener": 9093
+            "listener": 19093
         }
     },
     "kafka": {
@@ -71,7 +71,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/kafka-storage",
+            "storage": "/data/kafka-storage",
             "num_partitions": {
                 "single": 3,
                 "multi": 7
@@ -83,8 +83,8 @@
             "log_retention_hours": 72
         },
         "ports": {
-            "jmx": 9091,
-            "listener": 9092
+            "jmx": 19091,
+            "listener": 19092
         }
     },
     "schema_registry": {
@@ -93,7 +93,7 @@
         ],
         "deployment_path": "",
         "ports": {
-            "listener": 8081
+            "listener": 18081
         }
     },
     "nifi": {
@@ -102,16 +102,16 @@
         ],
         "deployment_path": "",
         "properties": {
-            "zk_root_node": "/home/saksham/nifi",
+            "zk_root_node": "/nifi",
             "min_heap_memory": 4,
             "max_heap_memory": 8
         },
         "ports": {
-            "node_load_balance": 6342,
-            "http": 8080,
-            "remote_input_socket": 10443,
-            "registry": 18080,
-            "node_protocol": 11443
+            "node_load_balance": 16342,
+            "http": 18080,
+            "remote_input_socket": 20443,
+            "registry": 28080,
+            "node_protocol": 21443
         }
     },
     "doris_fe": {
@@ -120,7 +120,7 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "/home/saksham/${DORIS_HOME}/log"
+            "log": "${DORIS_HOME}/log"
         },
         "ports": {
             "http": 8030,
@@ -135,8 +135,8 @@
         ],
         "deployment_path": "",
         "properties": {
-            "log": "$/home/saksham/{DORIS_HOME}/log",
-            "storage": "/home/saksham/data/doris-be-storage"
+            "log": "${DORIS_HOME}/log",
+            "storage": "/mnt/onexdata/data/doris-be-storage"
         },
         "ports": {
             "webserver": 8040,
@@ -157,24 +157,24 @@
             "api"
         ],
         "ports": {
-            "listener": 9100
+            "listener": 19100
         }
     },
     "kafka_exporter": {
         "deployment_path": "",
         "ports": {
-            "listener": 9308
+            "listener": 19308
         }
     },
     "monitoring": {
         "node_ip": "__monitoring_ip__",
         "deployment_path": "",
         "properties": {
-            "storage": "/home/saksham/data/grafana-storage"
+            "storage": "/data/grafana-storage"
         },
         "ports": {
-            "prometheus": 9090,
-            "grafana": 3000
+            "prometheus": 19090,
+            "grafana": 13000
         },
         "smtp": {
             "from_address": "__sender_email__",
@@ -187,8 +187,8 @@
         ],
         "deployment_path": "",
         "ports": {
-            "sms": 12000,
-            "warcs": 12001
+            "sms": 22000,
+            "warcs": 22001
         },
         "deployment_version": "__deployment_version__",
         "remote_jobs": "__remote_jobs__",
@@ -221,10 +221,10 @@
             "schema_registry"
         ],
         "ports": {
-            "doris_fe": 1080,
-            "api_sms": 1081,
-            "api_warcs": 1082,
-            "schema_registry": 1083
+            "doris_fe": 11080,
+            "api_sms": 11081,
+            "api_warcs": 11082,
+            "schema_registry": 11083
     }
     },
     "health_report": {
