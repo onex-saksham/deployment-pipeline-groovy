@@ -448,14 +448,23 @@ ${initContent}
                                 venv/bin/pip install -r requirements.txt
 
                                 echo "Running the deployment script..."
+                                set -o pipefail
                                 export LOG_TO_CONSOLE=true
                                 venv/bin/python3 deployment.py 2>&1 | tee deployment.log
                             ''', returnStatus: false
                         }
+                    } catch (err) {
+                        echo "Deployment script failed: ${err}"
+                        currentBuild.result = 'FAILURE'
+                        throw err
+                    } finally {
+                        echo "Cleaning up temporary SSH key..."
+                        sh 'rm -rf /home/jenkins/.ssh'
                     }
-                }
-            }
-        }
+                } // end script
+            } // end withCredentials
+        } // end stage
+
 
 
         // Stage 8: Placeholder for post-deployment validation.
