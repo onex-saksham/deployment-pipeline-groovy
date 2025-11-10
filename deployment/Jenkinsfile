@@ -138,7 +138,7 @@ node {
             dir('temp_config_repo') {
                 // Pull only the odp-config directory using sparse checkout for efficiency
                 withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
-                    def vaultAddr = "http://10.51.3.152:8200"
+                    def vaultAddr = "http://localhost:8200"
                     def vaultPath = "secret/data/jenkins/github"
 
                     echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
