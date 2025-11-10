@@ -173,7 +173,7 @@ node {
                         git remote add origin ${gitUrl}
                         git config core.sparseCheckout true
                         echo "Jenkins/odp-config/deployment" > .git/info/sparse-checkout
-                        git pull origin main --depth=1
+                        git pull origin aura-8962-ODP---Airtel-DR-deployment --depth=1
                     """
                     
                     echo "Normalizing odp-config directory structure..."
