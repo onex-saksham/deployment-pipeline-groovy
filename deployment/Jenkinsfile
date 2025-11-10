@@ -8,7 +8,7 @@ node {
             booleanParam(name: 'Whatsapp', defaultValue: false),
 
             // == Environment Selection ==
-            choice(name: 'TARGET_ENV', choices: ['Multi','noida_vm','Test', 'Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
+            choice(name: 'TARGET_ENV', choices: ['Multi','Test', 'Airtel_dr', 'Dev', 'Single', 'QA', 'Prod', 'SBI_prod', 'SMPP_DR', 'Functional_Lab'], description: 'Select the target environment for deployment.'),
             // string(name: 'DEPLOY_VERSION', defaultValue: '1.0.0', description: 'Enter the version to deploy (e.g., 1.2.3).'),
 
 
@@ -113,21 +113,77 @@ node {
 
 
 
-        // Stage 3: Fetch the developer-specific configuration files from another repository.
-        stage('Gather Developer Configs') {
-            echo "Fetching developer configuration repository..."
+        // // Stage 3: Fetch the developer-specific configuration files from another repository.
+        // stage('Gather Developer Configs') {
+        //     echo "Fetching developer configuration repository..."
             
-            def devConfigRepoUrl = 'https://github.com/onex-saksham/ODP-configs.git'
+        //     def devConfigRepoUrl = 'https://github.com/onex-saksham/ODP-configs.git'
+
+        //     dir('temp_config_repo') {
+        //         checkout([
+        //             $class: 'GitSCM',
+        //             branches: [[name: '*/main']],
+        //             userRemoteConfigs: [[url: devConfigRepoUrl]]
+        //         ])
+        //     }
+
+        //     echo "Successfully checked out developer configuration repository."
+        // }
+        stage('Gather Developer Configs') {
+            echo "Fetching developer configuration directory from main 1xtel/ODP repository..."
+
+            // Updated to use 1xtel/ODP.git (main repo)
+            def devConfigRepoUrl = 'https://github.com/1xtel/ODP.git'
 
             dir('temp_config_repo') {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: devConfigRepoUrl]]
-                ])
+                // Pull only the odp-config directory using sparse checkout for efficiency
+                withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
+                    def vaultAddr = "http://10.51.3.152:8200"
+                    def vaultPath = "secret/data/jenkins/github"
+
+                    echo "Fetching GitHub credentials from Vault (${vaultAddr}/v1/${vaultPath})..."
+                    def vaultResponse = sh(
+                        script: """
+                            curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" \\
+                                ${vaultAddr}/v1/${vaultPath}
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    if (!vaultResponse) {
+                        error "Vault returned empty response for path: ${vaultPath}"
+                    }
+
+                    def vaultJson = readJSON text: vaultResponse
+                    def githubData = vaultJson?.data?.data
+
+                    if (!githubData || !githubData['username'] || !githubData['token']) {
+                        error "Missing username/token fields in Vault secret at ${vaultPath}"
+                    }
+
+                    def GITHUB_USER = githubData['username']
+                    def GITHUB_TOKEN = githubData['token']
+                    echo "Successfully retrieved GitHub credentials from Vault."
+
+                    // Perform sparse checkout for odp-config directory only
+                    def gitUrl = "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/1xtel/ODP.git"
+                    sh """
+                        git init
+                        git remote add origin ${gitUrl}
+                        git config core.sparseCheckout true
+                        echo "Jenkins/odp-config/deployment" > .git/info/sparse-checkout
+                        git pull origin main --depth=1
+                    """
+                    
+                    echo "Normalizing odp-config directory structure..."
+                    sh """
+                        mkdir -p deployment
+                        cp -r Jenkins/odp-config/deployment/* deployment/
+                    """
+                }
             }
 
-            echo "Successfully checked out developer configuration repository."
+            echo "Successfully fetched odp-config directory from 1xtel/ODP repository."
         }
 
         stage('Fetch Passwords from Vault') {
