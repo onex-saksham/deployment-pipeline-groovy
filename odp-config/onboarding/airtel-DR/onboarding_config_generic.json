@@ -1,0 +1,25 @@
+{
+    "base_user": "jenkins",
+    "user": "onexodp",
+    "deployment_type": "__deployement_type__",
+    "deployment_path": "/data/ODP/tools",
+ 
+    "doris_host": "__dorishost__",
+    "doris_port": 9030,
+    "doris_http_port": 8030,
+    "doris_user": "root",
+    "password": "__doris_root_password__",
+    "database": "ODWH",
+    "metadata_database": "metadata_ODWH",
+ 
+    "kafka_broker_list": ["__kafkabrokerlist__"],
+    "kafka_port": 9092,
+    "auto_offset_reset": "earliest",
+ 
+    "tenant_id": ["10"],
+    "monitoring_host": "__monitoringhost__",
+    "is_SA": "__issa__",
+ 
+    "channels": ["__channels__"]
+ 
+}

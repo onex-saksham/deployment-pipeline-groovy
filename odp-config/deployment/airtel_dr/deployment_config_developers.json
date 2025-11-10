@@ -1,0 +1,52 @@
+{
+    "deployment_path": "/data/ODP/tools",
+    "ssh_port": "22",
+    "zookeeper": {
+        "node_ip": ["172.19.101.69","172.19.101.70","172.19.101.71"]
+    },
+    "kafka": {
+        "broker_ip": ["172.19.101.80","172.19.101.81","172.19.101.82"]
+    },
+    "schema_registry": {
+        "node_ip": ["0.0.0.0"]
+    },
+    "nifi": {
+        "node_ip": ["0.0.0.0"]
+    },
+    "doris_fe": {
+        "node_ip": ["172.19.101.85","172.19.101.86","172.19.101.87"]
+    },
+    "doris_be": {
+        "node_ip": ["172.19.101.88","172.19.101.89","172.19.101.90"]
+    },
+    "monitoring": {
+        "node_ip": "0.0.0.0"
+    },
+    "api": {
+        "deployment_version": "<API_DEPLOYMENT_VERSION>",
+        "node_ip": ["0.0.0.0"],
+        "remote_jobs": "<TRUE_OR_FALSE>",
+        "use_nginx": "<TRUE_OR_FALSE>",
+        "erlang_registry_ip": "<ERLANG_REGISTRY_IP>",
+        "is_sa_seperate": "<TRUE_OR_FALSE>",
+        "max_download_rows": "<MAX_DOWNLOAD_ROWS>",
+        "erlang_registry_url": "<ERLANG_REGISTRY_URL>",
+        "heartbeat_interval": "<HEARTBEAT_INTERVAL_SECONDS>"
+    },
+    "backend_job": {
+        "node_ip": ["0.0.0.0"],
+        "ID_DESC_URL": "<ID_DESCRIPTION_URL>",
+        "ZIP_HOST_IP": "<ZIP_HOST_IP>",
+        "ZIP_USERNAME": "<ZIP_USERNAME>",
+        "ZIP_SSH": "<TRUE_OR_FALSE>",
+        "IS_SCP_REQUIRED": "<TRUE_OR_FALSE>",
+        "BACKEND_JOB_USER": "<BACKEND_JOB_USER>",
+        "query_batch_size": "<QUERY_BATCH_SIZE>"
+    },
+    "nginx": {
+        "node_ip": "0.0.0.0"
+    },
+    "smtp": {
+        "recipients_email": ["<recipient_email_1>"]
+    }
+}
