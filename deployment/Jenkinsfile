@@ -136,6 +136,7 @@ node {
             def devConfigRepoUrl = 'https://github.com/1xtel/ODP.git'
 
             dir('temp_config_repo') {
+                deleteDir()
                 // Pull only the odp-config directory using sparse checkout for efficiency
                 withCredentials([string(credentialsId: 'vault-root-token', variable: 'VAULT_TOKEN')]) {
                     def vaultAddr = "http://localhost:8200"
