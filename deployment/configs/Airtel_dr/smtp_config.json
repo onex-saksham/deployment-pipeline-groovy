@@ -1,0 +1,9 @@
+{
+    "smtp_server": "smtp-relay.brevo.com",
+    "smtp_port": 587,
+    "smtp_email": "info@onextel.com",
+    "sender_password": "__password_from_vault__",
+    "sender_email": "dev-info@onextel.com",
+    "recipients_email": ["__recipients_email__"],
+    "environment": "multi"
+}
