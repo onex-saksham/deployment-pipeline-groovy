@@ -864,7 +864,7 @@ def deploy_api(config, binary_path, ssh):
 
             env_file_versioned = "aurasummary-2.2.5.env"
             service_file_versioned = "aurasummary-2.2.5.service"
-            log4j_file_name = "log4j2.xml" if deploy_type == "SMS" else "log4j2warcs.xml"
+            log4j_file_name = "log4j2.xml"
 
             for i in range(0, len(api["node_ip"]), 1):
                 logger.info(f"Deploying API on: {api["node_ip"][i]}")
