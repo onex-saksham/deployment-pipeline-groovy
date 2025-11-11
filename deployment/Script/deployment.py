@@ -852,9 +852,9 @@ def deploy_api(config, binary_path, ssh):
     try:
         for deploy_type in deploy_types:
             if deploy_type == "SMS":
-                service_file_name = "aurasummary.service"
+                service_file_name = "aurasummary-2.2.5.service"
                 env_file_name = "aurasummary-2.2.5.env"
-                jar_file_name = f"aurasummary-{version}.jar"
+                jar_file_name = f"aurasummary-2.2.5.jar"
                 api_port = api["ports"]["sms"]
             else:  # WHATSAPP_RCS
                 service_file_name = "aurasummarywarcs.service"
