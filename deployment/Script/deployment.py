@@ -856,11 +856,8 @@ def deploy_api(config, binary_path, ssh):
                 env_file_name = "aurasummary-2.2.5.env"
                 jar_file_name = f"aurasummary-2.2.5.jar"
                 api_port = api["ports"]["sms"]
-            else:  # WHATSAPP_RCS
-                service_file_name = "aurasummarywarcs.service"
-                env_file_name = "aurasummarywarcs.env"
-                jar_file_name = f"aurasummarywarcs-{version}.jar"
-                api_port = api["ports"]["warcs"]
+            else: 
+                pass
 
             env_file_versioned = "aurasummary-2.2.5.env"
             service_file_versioned = "aurasummary-2.2.5.service"
@@ -903,24 +900,8 @@ def deploy_api(config, binary_path, ssh):
                              f"-e 's|__is_sa_seperate__|{api["is_sa_seperate"]}|g' "
                              f"-e 's|__max_download_rows__|{api["max_download_rows"]}|g' "                           
                              f"{env_file_versioned}")
-                else:  # WARCS
-                    run(ssh, f"cd {deployment_path}/api && "
-                             f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
-                             f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
-                             f"-e 's|__warcs_user__|warcs_api_user|g' "
-                             f"-e 's|__warcs_password__|{password()['warcs_api_user']}|g' "
-                             f"-e 's|__api_port__|{api["ports"]["warcs"]}|g' "
-                             f"-e 's|__backend_user__|{config['user']}|g' "
-                             f"-e 's|__backend_node_ip__|{backend_job_node_ip}|g' "
-                             f"-e 's|__backend_path__|{backend_job_path}|g' "
-                             f"-e 's|__deployment_path__|{deployment_path}|g' "
-                             f"-e 's|__ssh_port__|{ssh_port}|g' "
-                             f"-e 's|__remote_jobs__|{remote_jobs}|g' "
-                             f"-e 's|__api_nginx_ip__|{config["nginx"]["node_ip"]}|g' "
-                             f"-e 's|__api_nginx_port__|{config["nginx"]["ports"]["api_warcs"]}|g' "
-                             f"-e 's|__erlang_registry_url__|{api["erlang_registry_url"]}|g' "
-                             f"-e 's|__heartbeat_interval__|{api["heartbeat_interval"]}|g' "
-                             f"{env_file_versioned}")
+                else:  
+                    pass
 
                 # Update log4j placeholders
                 run(ssh, f"cd {deployment_path}/api && "
