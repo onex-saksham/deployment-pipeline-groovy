@@ -875,7 +875,7 @@ def deploy_api(config, binary_path, ssh):
 
                 # Copy env file
                 with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Setups/api/{env_file_name}", f"{deployment_path}/api/")
+                    scp.put(f"{binary_path}/Setups/api/{env_file_versioned}", f"{deployment_path}/api/")
                 # run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
 
                 # Copy log4j file
