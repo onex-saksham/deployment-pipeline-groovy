@@ -928,17 +928,13 @@ def deploy_api(config, binary_path, ssh):
                          f"{log4j_file_name}")
 
                 with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
-                run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
-
+                    scp.put(f"{binary_path}/Services/api/aurasummary-2.2.5.service", f"{service_path}")
                 run(ssh, f"cd {service_path} && "
-                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                         f"-e 's|__deployment_version__|{version}|g' "
-                         f"{service_file_versioned}")
-
+                    f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
+                    "aurasummary-2.2.5.service")
                 run(ssh, "systemctl --user daemon-reload && "
-                         f"systemctl --user enable {service_file_versioned} && "
-                         f"systemctl --user start {service_file_versioned}")
+                    "systemctl --user enable aurasummary-2.2.5.service && "
+                    "systemctl --user start aurasummary-2.2.5.service")
 
                 logger.info(f"{deploy_type} API successfully started on: {api['node_ip'][i]}")
     except Exception as e:
