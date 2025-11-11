@@ -862,8 +862,8 @@ def deploy_api(config, binary_path, ssh):
                 jar_file_name = f"aurasummarywarcs-{version}.jar"
                 api_port = api["ports"]["warcs"]
 
-            env_file_versioned = f"{env_file_name.replace('.env', '')}-{version}.env"
-            service_file_versioned = f"{service_file_name.replace('.service', '')}-{version}.service"
+            env_file_versioned = "aurasummary-2.2.5.env"
+            service_file_versioned = "aurasummary-2.2.5.service"
             log4j_file_name = "log4j2.xml" if deploy_type == "SMS" else "log4j2warcs.xml"
 
             for i in range(0, len(api["node_ip"]), 1):
