@@ -1,0 +1,90 @@
+<%
+    import hudson.model.*
+    import hudson.plugins.git.util.BuildData
+
+    // === Basic Build Info ===
+    def buildStatus = build.result?.toString() ?: 'SUCCESS'
+    def ok = buildStatus == 'SUCCESS'
+    def color = ok ? '#2e7d32' : '#c62828'
+    def bg = ok ? '#e6f9ed' : '#fdecea'
+    def emoji = ok ? '✅' : '❌'
+
+    def causes = build.getCauses().collect { it.shortDescription }.join(', ')
+    def duration = build.durationString ?: 'N/A'
+    def timestamp = build.getTimestampString2() ?: build.getTimestampString()
+
+    // === Gather Git Information ===
+    def gitInfo = []
+    def actions = build.getActions(BuildData)
+    actions.each { bd ->
+        def remoteUrls = bd?.remoteUrls ?: []
+        remoteUrls.each { url ->
+            // Mask GitHub tokens (replace anything between ':' and '@' with ****)
+            def safeUrl = url.replaceAll(/:[^@]+@/, ':****@')
+            def branch = bd?.lastBuild?.revision?.branches?.collect { it.name }?.join(', ') ?: 'N/A'
+            // Simplify branch name (remove refs/heads/ or refs/remotes/origin/)
+            branch = branch.replaceAll('refs/(heads|remotes/origin)/', '')
+            def commit = bd?.lastBuild?.revision?.sha1?.name() ?: 'N/A'
+            gitInfo << [url: safeUrl, branch: branch, commit: commit]
+        }
+    }
+
+    if (gitInfo.isEmpty()) {
+        gitInfo << [url: 'No Git repositories detected', branch: '', commit: '']
+    }
+%>
+
+<html>
+  <body style="font-family:Segoe UI, Arial, sans-serif; background:#f9f9f9; padding:20px;">
+    <div style="max-width:700px;margin:auto;background:#fff;border-radius:10px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:20px;">
+
+      <!-- Header (Text Only) -->
+
+      <!-- Build Status Banner -->
+      <div style="text-align:center;padding:15px;border-radius:8px;margin-bottom:20px;
+                  background-color:${bg};color:${color};">
+        <h2 style="margin:0;font-size:22px;">${emoji} BUILD ${buildStatus}</h2>
+      </div>
+
+      <!-- Build Info -->
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td><b>Project:</b></td><td>${build.getParent().name}</td></tr>
+        <tr><td><b>Build #:</b></td><td>${build.number}</td></tr>
+        <tr><td><b>Date of Build:</b></td><td>${timestamp}</td></tr>
+        <tr><td><b>Duration:</b></td><td>${duration}</td></tr>
+        <tr><td><b>Build URL:</b></td><td><a href="${rooturl}${build.url}">${rooturl}${build.url}</a></td></tr>
+        <tr><td><b>Triggered By:</b></td><td>${causes}</td></tr>
+        <tr><td><b>Result:</b></td><td style="color:${color};font-weight:bold;">${buildStatus}</td></tr>
+      </table>
+
+      <!-- Git Info -->
+      <h3 style="margin-top:25px;color:#2c3e50;">Git Repositories Used</h3>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #eee;">
+        <tr style="background:#f6f6f6;font-weight:bold;">
+          <td style="padding:6px;">Repository URL</td>
+          <td style="padding:6px;">Branch</td>
+          <td style="padding:6px;">Commit SHA</td>
+        </tr>
+        <% gitInfo.each { repo -> %>
+          <tr>
+            <td style="padding:6px;">${repo.url}</td>
+            <td style="padding:6px;">${repo.branch}</td>
+            <td style="padding:6px;">${repo.commit}</td>
+          </tr>
+        <% } %>
+      </table>
+
+      <!-- Footer Message -->
+      <% if (!ok) { %>
+        <div style="margin-top:20px;padding:10px;background:#fdecea;border-left:5px solid #c62828;">
+          ⚠ Error Summary – see <a href="${rooturl}${build.url}console">console output</a>
+        </div>
+      <% } else { %>
+        <div style="margin-top:20px;padding:10px;background:#e6f9ed;border-left:5px solid #2e7d32;">
+          Build Successful – no issues detected.
+        </div>
+      <% } %>
+    </div>
+  </body>
+</html>
