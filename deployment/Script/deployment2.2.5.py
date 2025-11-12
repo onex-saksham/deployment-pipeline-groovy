@@ -852,19 +852,16 @@ def deploy_api(config, binary_path, ssh):
     try:
         for deploy_type in deploy_types:
             if deploy_type == "SMS":
-                service_file_name = "aurasummary.service"
-                env_file_name = "aurasummary.env"
-                jar_file_name = f"aurasummary-{version}.jar"
+                service_file_name = "aurasummary-2.2.5.service"
+                env_file_name = "aurasummary-2.2.5.env"
+                jar_file_name = f"aurasummary-2.2.5.jar"
                 api_port = api["ports"]["sms"]
-            else:  # WHATSAPP_RCS
-                service_file_name = "aurasummarywarcs.service"
-                env_file_name = "aurasummarywarcs.env"
-                jar_file_name = f"aurasummarywarcs-{version}.jar"
-                api_port = api["ports"]["warcs"]
+            else: 
+                pass
 
-            env_file_versioned = f"{env_file_name.replace('.env', '')}-{version}.env"
-            service_file_versioned = f"{service_file_name.replace('.service', '')}-{version}.service"
-            log4j_file_name = "log4j2.xml" if deploy_type == "SMS" else "log4j2warcs.xml"
+            env_file_versioned = "aurasummary-2.2.5.env"
+            service_file_versioned = "aurasummary-2.2.5.service"
+            log4j_file_name = "log4j2.xml"
 
             for i in range(0, len(api["node_ip"]), 1):
                 logger.info(f"Deploying API on: {api["node_ip"][i]}")
@@ -875,8 +872,8 @@ def deploy_api(config, binary_path, ssh):
 
                 # Copy env file
                 with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Setups/api/{env_file_name}", f"{deployment_path}/api/")
-                run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
+                    scp.put(f"{binary_path}/Setups/api/{env_file_versioned}", f"{deployment_path}/api/")
+                # run(ssh, f"cd {deployment_path}/api && mv {env_file_name} {env_file_versioned}")
 
                 # Copy log4j file
                 with SCPClient(ssh.get_transport()) as scp:
@@ -903,24 +900,8 @@ def deploy_api(config, binary_path, ssh):
                              f"-e 's|__is_sa_seperate__|{api["is_sa_seperate"]}|g' "
                              f"-e 's|__max_download_rows__|{api["max_download_rows"]}|g' "                           
                              f"{env_file_versioned}")
-                else:  # WARCS
-                    run(ssh, f"cd {deployment_path}/api && "
-                             f"sed -i -e 's|__doris_fe_master_ip__|{doris_fe_node_ip[0]}|g' "
-                             f"-e 's|__doris_fe_query_port__|{doris_fe_node_port['query']}|g' "
-                             f"-e 's|__warcs_user__|warcs_api_user|g' "
-                             f"-e 's|__warcs_password__|{password()['warcs_api_user']}|g' "
-                             f"-e 's|__api_port__|{api["ports"]["warcs"]}|g' "
-                             f"-e 's|__backend_user__|{config['user']}|g' "
-                             f"-e 's|__backend_node_ip__|{backend_job_node_ip}|g' "
-                             f"-e 's|__backend_path__|{backend_job_path}|g' "
-                             f"-e 's|__deployment_path__|{deployment_path}|g' "
-                             f"-e 's|__ssh_port__|{ssh_port}|g' "
-                             f"-e 's|__remote_jobs__|{remote_jobs}|g' "
-                             f"-e 's|__api_nginx_ip__|{config["nginx"]["node_ip"]}|g' "
-                             f"-e 's|__api_nginx_port__|{config["nginx"]["ports"]["api_warcs"]}|g' "
-                             f"-e 's|__erlang_registry_url__|{api["erlang_registry_url"]}|g' "
-                             f"-e 's|__heartbeat_interval__|{api["heartbeat_interval"]}|g' "
-                             f"{env_file_versioned}")
+                else:  
+                    pass
 
                 # Update log4j placeholders
                 run(ssh, f"cd {deployment_path}/api && "
@@ -928,17 +909,13 @@ def deploy_api(config, binary_path, ssh):
                          f"{log4j_file_name}")
 
                 with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(f"{binary_path}/Services/api/{service_file_name}", service_path)
-                run(ssh, f"cd {service_path} && mv {service_file_name} {service_file_versioned}")
-
+                    scp.put(f"{binary_path}/Services/api/aurasummary-2.2.5.service", f"{service_path}")
                 run(ssh, f"cd {service_path} && "
-                         f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
-                         f"-e 's|__deployment_version__|{version}|g' "
-                         f"{service_file_versioned}")
-
+                    f"sed -i -e 's|__deployment_path__|{deployment_path}|g' "
+                    "aurasummary-2.2.5.service")
                 run(ssh, "systemctl --user daemon-reload && "
-                         f"systemctl --user enable {service_file_versioned} && "
-                         f"systemctl --user start {service_file_versioned}")
+                    "systemctl --user enable aurasummary-2.2.5.service && "
+                    "systemctl --user start aurasummary-2.2.5.service")
 
                 logger.info(f"{deploy_type} API successfully started on: {api['node_ip'][i]}")
     except Exception as e:

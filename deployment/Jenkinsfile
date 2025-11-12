@@ -92,7 +92,7 @@ node {
         //                 git remote add origin ${gitUrl}
         //                 git config core.sparseCheckout true
         //                 echo "Jenkins/deployment-pipeline/Releases/" > .git/info/sparse-checkout
-        //                 git pull origin release/ODP-2.2.5 --depth=1
+        //                 git pull origin main --depth=1
         //             """
 
         //             // Cleanup sensitive Git config
