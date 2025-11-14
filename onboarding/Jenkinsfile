@@ -1,0 +1,95 @@
+pipeline {
+    agent { label 'Built-InNode'}
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'airtel-DR'], description: 'Select the environment for onboarding')
+    }
+    stages {
+        stage ('clean workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Checkout ODP Repo') {
+            steps {
+               dir('ODP') {
+        withCredentials([usernamePassword(credentialsId: 'onex-github', usernameVariable: 'GIT_USER',passwordVariable: 'GIT_TOKEN')]) {
+          sh '''
+            export GIT_LFS_SKIP_SMUDGE=1
+            git clone --branch main https://${GIT_USER}:${GIT_TOKEN}@github.com/1xtel/ODP.git .
+          '''
+        }
+    }
+                sh '''
+                pwd
+                ls -la
+                '''
+            }
+        }
+        stage('checkout odp-devops repo') {
+            steps {
+                // Checkout the odp-devops repository from GitHub. To fetch Jenkinsfile.
+               dir ('odp-devops') {
+               git branch: 'main', // Replace with the desired branch name
+                    credentialsId: 'onex-github', // Optional: for private repositories
+                    url: 'https://github.com/1xtel/odp-devops.git' // Replace with your repository URL
+                sh '''
+                ls -la
+                '''
+               }
+               }
+        }
+
+        stage('updating the json file') {
+            steps {
+                echo "Getting the config files for ${ENVIRONMENT} environment"
+                //update the generic config file based on the selected environment.
+                
+                script {
+                    sh '''
+                   cp ODP/Jenkins/odp-config/onboarding/${ENVIRONMENT}/onboarding_config_generic.json ODP/Jenkins/onboarding-pipeline/Script/onboarding_config.json
+                   ls -la ODP/Jenkins/onboarding-pipeline/Script/
+                       '''
+        }
+            }
+        }
+        stage ('confirmation') {
+            steps {
+                  script {
+            def files = sh(script: 'cat ODP/Jenkins/onboarding-pipeline/Script/onboarding_config.json', returnStdout: true).trim()
+                
+                input(
+                    // Construct a multi-line message string that includes all three file contents.
+                    message: """Please review the onboarding configuration below. Do you want to proceed?
+                    ${files}
+ """,
+                    ok: 'Yes, Proceed with Deployment'
+                )
+                }
+            }
+        }
+        stage('Onboarding') {
+            steps {
+                echo 'Onboarding...'
+                // invoke onboarding.py script with necessary parameters from onboarding_config_generic.json
+                script {
+                    dir ('ODP/Jenkins/onboarding-pipeline/Script') {
+                        sh '''
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install -r requirements.txt
+                        python3 -u onboarding.py                        
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Onboarding Validation') {
+            steps {
+                echo "Validating Onboarding..."
+                
+            }
+        }
+    }
+}
+
+    
